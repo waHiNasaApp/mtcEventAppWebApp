@@ -1,0 +1,138 @@
+/* ============================================================
+   IMPORTS
+   ============================================================ */
+@import 'tailwindcss';
+@source "../src";
+@import '@fortawesome/fontawesome-free/css/all.min.css';
+
+/* ============================================================
+   GLOBAL COLORS
+   ============================================================ */
+@theme {
+  --color-scouting-red: #ce1126;
+  --color-scouting-blue: #003f87;
+  --color-scouting-tan: #d6cebd;
+  --color-scouting-grey: #515354;
+  --color-scouting-pale-blue: #9ab3d5;
+  --color-scouting-dark-blue: #003366;
+  --color-scouting-light-tan: #e9e9e4;
+  --color-scouting-dark-tan: #ad9d7b;
+  --color-scouting-pale-grey: #858787;
+  --color-scouting-dark-grey: #232528;
+}
+
+/* ============================================================
+   SITE-WIDE UTILITY CLASSES
+   ============================================================ */
+@utility card-base {
+  @apply bg-white rounded-xl shadow-sm border border-scouting-light-tan;
+}
+
+@utility item-title {
+  @apply font-bold text-scouting-dark-grey text-lg leading-tight;
+}
+
+@utility item-subtitle {
+  @apply text-scouting-dark-grey font-medium text-sm mt-1;
+}
+
+/* ============================================================
+   SITE-WIDE LAYOUT CLASSES
+   ============================================================ */
+.columns-grid {
+  @apply grid grid-cols-1 lg:grid-cols-2 gap-6 items-start;
+}
+
+.card-padded {
+  @apply card-base p-6 flex flex-col;
+}
+
+.section-title {
+  @apply text-2xl font-bold text-scouting-dark-grey mb-1;
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn {
+  @apply px-4 py-2 rounded-md text-sm transition-all duration-200 inline-block;
+}
+
+.btn-primary {
+  @apply bg-scouting-red text-white;
+}
+
+.btn-primary:hover {
+  @apply brightness-90;
+}
+
+.btn-secondary {
+  @apply text-scouting-grey;
+}
+
+.btn-secondary:hover {
+  @apply text-scouting-dark-grey;
+}
+
+/* ============================================================
+   BASE.NJK
+   ============================================================ */
+
+/* Page Layout */
+.page-body {
+  @apply bg-scouting-light-tan text-scouting-dark-grey font-sans antialiased min-h-screen flex flex-col;
+}
+
+.page-main {
+  @apply grow w-full;
+}
+
+.container {
+  @apply max-w-7xl mx-auto px-4;
+}
+
+.header {
+  @apply bg-white shadow-sm;
+}
+
+.header-container {
+  @apply py-4 flex justify-between items-center;
+}
+
+.logo {
+  @apply text-xl font-bold text-scouting-blue;
+}
+
+.user-status {
+  @apply text-sm text-scouting-grey mr-4;
+}
+
+/* ============================================================
+   PRIVATE.NJK
+   ============================================================ */
+.loading-wrapper {
+  @apply flex items-center justify-center md:justify-start gap-3 py-10 text-scouting-grey;
+}
+
+.loading-spinner {
+  /* w-5 h-5 creates a 20x20px circle. The border colors create the spinner effect. */
+  @apply w-5 h-5 border-2 border-scouting-tan border-t-scouting-blue rounded-full animate-spin;
+}
+
+/* ============================================================
+   LOGIN.NJK CLASSES
+   ============================================================ */
+.google-login-button {
+  @apply w-full flex items-center justify-center py-2 px-4 border border-scouting-pale-grey rounded-md shadow-sm text-sm font-medium text-scouting-dark-grey bg-white hover:bg-scouting-light-tan transition;
+}
+
+/* ============================================================
+   DIRECTORY.NJK CLASSES
+   ============================================================ */
+.directory-button {
+  @apply w-full flex items-center justify-center py-2 px-4 border border-scouting-pale-grey rounded-md shadow-sm font-bold text-white bg-scouting-blue transition-all duration-300 ease-in-out;
+}
+
+.directory-button:hover {
+  @apply brightness-80 shadow-md;
+}

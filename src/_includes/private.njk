@@ -1,0 +1,81 @@
+---
+layout: base.njk
+---
+
+<div id="loading-state" class="loading-wrapper">
+  <div class="loading-spinner"></div>
+  <span>Verifying access and fetching content...</span>
+</div>
+
+<div id="protected-content" class="hidden">{{ content | safe }}</div>
+
+<script type="module">
+  import { getApp, getApps } from "firebase/app"
+  import { getAuth, onAuthStateChanged, signOut } from "firebase/auth"
+  import { getFirestore, doc, getDoc } from "firebase/firestore"
+
+  // Wait for base.njk to initialize Firebase
+  function waitForFirebase() {
+    return new Promise((resolve) => {
+      if (getApps().length > 0) return resolve()
+
+      const check = setInterval(() => {
+        if (getApps().length > 0) {
+          clearInterval(check)
+          resolve()
+        }
+      }, 50)
+    })
+  }
+
+  // Initialize after confirming base.njk is done
+  await waitForFirebase()
+  const app = getApp()
+  const auth = getAuth(app)
+  const db = getFirestore(app)
+
+  onAuthStateChanged(auth, async (user) => {
+    const loadingEl = document.getElementById("loading-state")
+    const container = document.getElementById("protected-content")
+
+    // --- LOCALHOST BYPASS ---
+    if (
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
+    ) {
+      loadingEl.style.display = "none"
+      container.classList.remove("hidden")
+      console.log("Localhost detected: Bypassing authentication.")
+      return // Exit early
+    }
+
+    try {
+      const pageId =
+        window.location.pathname.replace(/^\/|\/$/g, "").replace(/\//g, "_") ||
+        "home"
+
+      console.log("Fetching content for ID:", pageId)
+
+      const docSnap = await getDoc(doc(db, "protected_pages", pageId))
+
+      if (docSnap.exists()) {
+        container.innerHTML = docSnap.data().content
+        container.classList.remove("hidden")
+        loadingEl.style.display = "none"
+      } else {
+        loadingEl.innerHTML = `Error: Content for "${pageId}" not found in vault.`
+      }
+    } catch (err) {
+      console.error("Fetch error:", err)
+      // If permission denied, logout, send an alert, and redirect to home
+      if (err.code === "permission-denied") {
+        alert("This Account is Not Authorized")
+        signOut(auth).then(() => {
+          window.location.href = "/"
+        })
+      } else {
+        loadingEl.innerHTML = "Error connecting to secure vault."
+      }
+    }
+  })
+</script>

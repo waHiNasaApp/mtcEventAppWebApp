@@ -1,0 +1,42 @@
+---
+title: Login
+layout: base.njk
+---
+
+<div class="card-base card-padded bg-white">
+  <h2 class="section-title text-center mb-6 text-(--Scouting_Dark_Blue)">
+    Sign in to your account
+  </h2>
+
+  <div class="mt-6">
+    <button id="google-login-btn" class="google-login-button">
+      <img src="/assets/google.png" class="h-5 w-5 mr-2" alt="Google logo" />
+      Sign in with Google
+    </button>
+  </div>
+  <div id="login-error" class="hidden text-red-500 mt-4 text-center"></div>
+</div>
+
+<script type="module">
+  import { getAuth, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+
+  const auth = getAuth();
+  const provider = new GoogleAuthProvider();
+  const googleBtn = document.getElementById('google-login-btn');
+
+  if (googleBtn) {
+    googleBtn.addEventListener('click', async () => {
+      try {
+        await signInWithPopup(auth, provider);
+        window.location.href = '/directory/';
+      } catch (error) {
+        console.error('Google Sign-In Error:', error.message);
+        const errorDiv = document.getElementById('login-error');
+        if (errorDiv) {
+          errorDiv.textContent = 'Failed to sign in. Please try again.';
+          errorDiv.classList.remove('hidden');
+        }
+      }
+    });
+  }
+</script>

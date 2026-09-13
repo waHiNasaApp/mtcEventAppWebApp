@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>{{ title }}</title>
+
+    <link href="/style.css" rel="stylesheet" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+
+    <script type="module">
+      // Import Firebase Modular SDKs
+      import { initializeApp } from "firebase/app"
+      import { getAuth, onAuthStateChanged, signOut } from "firebase/auth"
+      import { getFunctions } from "firebase/functions"
+
+      // Firebase Configuration
+      const firebaseConfig = {
+        apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+        appId: import.meta.env.VITE_FIREBASE_APP_ID,
+      }
+
+      // Initialize Firebase Services
+      const app = initializeApp(firebaseConfig)
+      const auth = getAuth(app)
+      const functions = getFunctions(app)
+
+      // DOM Elements
+      const userStatus = document.getElementById("user-status")
+      const logoutBtn = document.getElementById("logout-btn")
+
+      // Auth State Observer
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          // If the user is on the login page, redirect them to the directory
+          if (window.location.pathname == "/") {
+            window.location.href = "/directory/"
+          }
+
+          if (userStatus) userStatus.textContent = `Hello, ${user.displayName}`
+          if (logoutBtn) {
+            logoutBtn.classList.remove("hidden")
+            logoutBtn.style.display = "inline-block"
+          }
+        } else {
+          // User is logged out
+          if (userStatus) userStatus.textContent = ""
+          if (logoutBtn) {
+            logoutBtn.classList.add("hidden")
+            logoutBtn.style.display = "none"
+          }
+        }
+      })
+
+      // Logout Event Listener
+      if (logoutBtn) {
+        logoutBtn.addEventListener("click", () => {
+          signOut(auth).then(() => {
+            window.location.href = "/"
+          })
+        })
+      }
+    </script>
+  </head>
+
+  <body class="page-body">
+    <!-- Header / Nav -->
+    <header class="header">
+      <div class="container header-container">
+        <div>
+          <a href="/directory/" class="text-xl font-bold text-scouting-blue"
+            >MTC Event App Admin
+          </a>
+          <span class="text-lg font-normal text-scouting-dark-grey">
+            | {{ title }}</span
+          >
+        </div>
+
+        <!-- Auth Status UI -->
+        <div id="auth-container">
+          <span id="user-status" class="user-status"></span>
+          <button id="logout-btn" class="btn btn-primary hidden font-bold">
+            Log Out
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="container page-main p-5">
+      <!-- Main Content Injected Here -->
+      {{ content | safe }}
+    </main>
+
+    <footer class="footer"></footer>
+  </body>
+</html>

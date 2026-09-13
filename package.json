@@ -1,0 +1,41 @@
+{
+  "name": "mtceventappwebapp",
+  "version": "1.0.0",
+  "description": "Web App to control the MTC Event App",
+  "homepage": "https://github.com/waHiNasaApp/mtcEventAppWebApp#readme",
+  "bugs": {
+    "url": "https://github.com/waHiNasaApp/mtcEventAppWebApp/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/waHiNasaApp/mtcEventAppWebApp.git"
+  },
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "clean": "node clean-build.js",
+    "start": "npm run clean && npx @11ty/eleventy --serve",
+    "build": "npm run clean && npx @11ty/eleventy",
+    "sync": "npm run build && node sync-to-firestore.js",
+    "deployfuncs": "firebase deploy --only functions",
+    "deployfiles": "npm run sync && firebase deploy --only hosting:councilapp3",
+    "deployall": "npm run sync && firebase deploy --only functions && firebase deploy --only hosting:councilapp3",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "@11ty/eleventy": "^3.1.5",
+    "@fortawesome/fontawesome-free": "^7.3.1",
+    "cheerio": "^1.2.0",
+    "dotenv": "^17.4.2",
+    "firebase": "^12.19.0",
+    "firebase-admin": "^13.8.0"
+  },
+  "devDependencies": {
+    "@11ty/eleventy-plugin-vite": "^7.1.1",
+    "@tailwindcss/vite": "^4.2.4",
+    "prettier": "^3.9.5",
+    "shx": "^0.4.0",
+    "tailwindcss": "^4.2.3",
+    "vite": "^8.0.10"
+  }
+}
