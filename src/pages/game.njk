@@ -1,24 +1,149 @@
 ---
-title: Game
+title: Game Manager
 layout: private.njk
 ---
+
+<script>
+  function switchLeaderboard(type) {
+    const byPointsButton = document.getElementById("leaderboard-by-points");
+    const byUsersButton = document.getElementById("leaderboard-by-users");
+
+    if(type == 'points') {
+      byPointsButton.classList.add("btn-selected");
+      byUsersButton.classList.remove("btn-selected");
+
+      //FIXME: add leaderboard switching code
+    } else {
+      byPointsButton.classList.remove("btn-selected");
+      byUsersButton.classList.add("btn-selected");
+
+      //FIXME: add leaderboard switching code
+    }
+  }
+  
+</script>
 
 <div class="columns-grid">
   <!-- Left Column -->
   <div class="card-column">
-    <!-- Item -->
-    <div class="card-padded gap-3 mt-6">
-      <h2 class="item-title">TEMP</h2>
-      <div class="flex flex-col gap-4 mt-2"></div>
+    <!-- Card -->
+    <div class="card-padded">
+      <h2 class="item-title">User Search</h2>
+      <div class="card-contents">
+        <input
+          id="user-search-input"
+          type="text"
+          placeholder="Search users..."
+          class="input-text"
+        />
+
+        <div class="flex flex-wrap gap-2">
+          <button id="search-name-btn" onclick="" class="btn btn-search-option">
+            Search Name
+          </button>
+          <button
+            id="search-scouting-id-btn"
+            onclick=""
+            class="btn btn-search-option"
+          >
+            Search Scouting ID
+          </button>
+          <button
+            id="search-email-btn"
+            onclick=""
+            class="btn btn-search-option"
+          >
+            Search Email
+          </button>
+        </div>
+
+        <div id="user-list">
+          <h3 class="item-subtitle">User List</h3>
+          <p id="user-list-hint" class="text-scouting-pale-grey italic">
+            Start a search to view users...
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card -->
+    <div class="card-padded">
+      <h2 class="item-title">Modify User</h2>
+      <div class="card-contents">
+        <div class="modify-user-div">
+          <h3 class="modify-user-title">User ID</h3>
+          <input
+            id="modify-user-id text-scouting-pale-grey"
+            class="input-text"
+            type="text"
+            readonly
+          />
+        </div>
+        <div class="modify-user-div">
+          <h3 class="modify-user-title">Name</h3>
+          <input id="modify-user-id" class="input-text" type="text" />
+        </div>
+
+        <div class="modify-user-div">
+          <h3 class="modify-user-title">Current Points</h3>
+          <input id="modify-user-id" class="input-text" type="number" />
+        </div>
+
+        <div class="modify-user-div">
+          <h3 class="modify-user-title">Worth Points</h3>
+          <input id="modify-user-id" class="input-text" type="number" />
+        </div>
+
+        <div class="modify-user-div">
+          <h3 class="modify-user-title">Worth Points Comment</h3>
+          <input id="modify-user-id" class="input-text" type="text" />
+        </div>
+
+        <div class="modify-user-div">
+          <h3 class="modify-user-title">Current Points</h3>
+          <input id="modify-user-id" class="input-text" type="number" />
+        </div>
+
+        <button id="delete-user-btn" onclick="" class="btn btn-primary">
+          Delete User
+        </button>
+      </div>
     </div>
   </div>
 
   <!-- Right Column -->
   <div class="card-column">
-    <!-- Item -->
-    <div class="card-padded gap-3 mt-6">
-      <h2 class="item-title">TEMP</h2>
-      <div class="flex flex-col gap-4 mt-2"></div>
+    <!-- Card -->
+    <div class="card-padded">
+      <h2 class="item-title">Leaderboard</h2>
+      <div class="card-contents">
+        <div class="flex flex-row gap-2 items-stretch">
+          <button
+          id="leaderboard-by-points"
+            onclick="switchLeaderboard('points')"
+            class="btn btn-leaderboard-option flex-1 btn-selected"
+          >
+            By Points
+          </button>
+          <button
+          id="leaderboard-by-users"
+            onclick="switchLeaderboard('users')"
+            class="btn btn-leaderboard-option flex-1"
+          >
+            By Users Met
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card -->
+    <div class="card-padded">
+      <h2 class="item-title">Start New Game</h2>
+      <div class="card-contents">
+        <h3 class="item-subtitle">Export Game</h3>
+        <h3 class="item-subtitle">Import Game</h3>
+        <h3 class="item-subtitle">Wipe Game</h3>
+      </div>
     </div>
   </div>
 </div>

@@ -74,6 +74,10 @@
   @apply border-scouting-blue border-2 text-scouting-blue bg-blue-50;
 }
 
+.btn-leaderboard-option {
+  @apply border-scouting-dark-tan border-2 text-scouting-dark-tan bg-taupe-100;
+}
+
 .btn-selected {
   @apply border-3! font-bold!;
 }
