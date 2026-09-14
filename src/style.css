@@ -66,15 +66,19 @@
   @apply bg-scouting-red text-white font-bold;
 }
 
-.btn-secondary {
-  @apply text-scouting-grey;
+.btn-primary-blue {
+  @apply bg-scouting-blue text-white font-bold;
 }
 
-.btn-search-option {
+.btn-alternate {
+  @apply border-scouting-red border-2 text-scouting-red bg-red-50;
+}
+
+.btn-alternate-blue {
   @apply border-scouting-blue border-2 text-scouting-blue bg-blue-50;
 }
 
-.btn-leaderboard-option {
+.btn-alternate-tan {
   @apply border-scouting-dark-tan border-2 text-scouting-dark-tan bg-taupe-100;
 }
 
@@ -154,4 +158,12 @@
 
 .modify-user-title {
   @apply item-subtitle flex items-center;
+}
+
+.leaderboard-user-row {
+@apply flex items-center justify-between p-4 mb-2 bg-white rounded-lg shadow-sm border border-gray-100
+}
+
+.leaderboard-rank {
+  @apply flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-scouting-blue font-bold text-sm;
 }

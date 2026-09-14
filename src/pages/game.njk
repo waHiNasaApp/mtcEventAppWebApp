@@ -3,24 +3,163 @@ title: Game Manager
 layout: private.njk
 ---
 
-<script>
+<script type="module">
   function switchLeaderboard(type) {
-    const byPointsButton = document.getElementById("leaderboard-by-points");
-    const byUsersButton = document.getElementById("leaderboard-by-users");
+    // Define DOM elements
+    const byPointsButton = document.getElementById("leaderboard-by-points-btn")
+    const byUsersButton = document.getElementById("leaderboard-by-users-btn")
+    const pointsContainer = document.getElementById("leaderboard-by-points")
+    const usersContainer = document.getElementById("leaderboard-by-users")
 
-    if(type == 'points') {
-      byPointsButton.classList.add("btn-selected");
-      byUsersButton.classList.remove("btn-selected");
-
-      //FIXME: add leaderboard switching code
+    if (type == "points") {
+      // Switch leaderboard to "By Points"
+      byPointsButton.classList.add("btn-selected")
+      byUsersButton.classList.remove("btn-selected")
+      pointsContainer.classList.remove("hidden")
+      usersContainer.classList.add("hidden")
     } else {
-      byPointsButton.classList.remove("btn-selected");
-      byUsersButton.classList.add("btn-selected");
-
-      //FIXME: add leaderboard switching code
+      // Switch leaderboard to "By Users"
+      byPointsButton.classList.remove("btn-selected")
+      byUsersButton.classList.add("btn-selected")
+      pointsContainer.classList.add("hidden")
+      usersContainer.classList.remove("hidden")
     }
   }
-  
+
+  async function loadLeaderboard() {
+    const pointsContainer = document.getElementById("leaderboard-by-points")
+    const usersContainer = document.getElementById("leaderboard-by-users")
+
+    try {
+      // Call the Firebase function with n=10
+      const result = await getLeaderboards({ n: 10 })
+      const { topByPoints, topByUsersMet } = result.data
+
+      // Clear loading states
+      pointsContainer.innerHTML = ""
+      usersContainer.innerHTML = ""
+
+      // Render Top by Points
+      topByPoints.forEach((user, index) => {
+        const userElement = document.createElement("div")
+        userElement.className = "leaderboard-user-row"
+        userElement.innerHTML = `
+                <div class="flex items-center gap-4">
+                    <div class="leaderboard-rank">
+                        ${index + 1}
+                    </div>
+                    <div class="font-semibold">
+                        ${user.firstName} ${
+          user.lastInitial
+        }. - <span class="font-normal text-sm">ID: ${user.scoutingId}</span>
+                    </div>
+                </div>
+                <div class="font-bold">
+                    ${
+                      user.currentPoints
+                    } <span class="text-xs font-normal">pts</span>
+                </div>
+            `
+        pointsContainer.appendChild(userElement)
+      })
+
+      // Render Top by Users Met
+      topByUsersMet.forEach((user, index) => {
+        const userElement = document.createElement("div")
+        userElement.className = "leaderboard-user-row"
+        userElement.innerHTML = `
+                <div class="flex items-center gap-4">
+                    <div class="leaderboard-rank">
+                        ${index + 1}
+                    </div>
+                    <div class="font-semibold">
+                        ${user.firstName} ${
+          user.lastInitial
+        }. - <span class="font-normal text-sm">ID: ${user.scoutingId}</span>
+                    </div>
+                </div>
+                <div class="font-bold">
+                    ${
+                      user.numUsersMet
+                    } <span class="text-xs font-normal">connections</span>
+                </div>
+            `
+        usersContainer.appendChild(userElement)
+      })
+    } catch (error) {
+      console.error("Failed to load leaderboards:", error)
+      pointsContainer.innerHTML = "<p>Error loading leaderboard.</p>"
+      usersContainer.innerHTML = "<p>Error loading leaderboard.</p>"
+    }
+  }
+
+  /**
+   * Waits for an element to appear in the DOM.
+   * @param {string} selector - The CSS selector of the element to wait for.
+   * @returns {Promise<Element>} A promise that resolves with the DOM element.
+   */
+  async function waitForElement(selector) {
+    return new Promise((resolve) => {
+      if (document.querySelector(selector)) {
+        return resolve(document.querySelector(selector))
+      }
+      const observer = new MutationObserver((mutations) => {
+        if (document.querySelector(selector)) {
+          observer.disconnect()
+          resolve(document.querySelector(selector))
+        }
+      })
+      observer.observe(document.body, { childList: true, subtree: true })
+    })
+  }
+
+  /**
+   * Runs on initial load, waits for content to be loaded from firebase
+   * Sets up event listeners and load the leaderboard
+   */
+  async function initGame() {
+    await waitForElement(".columns-grid")
+
+    // Add event listeners
+    document
+      .getElementById("search-name-btn")
+      .addEventListener("click", () => searchUsers("name"))
+    document
+      .getElementById("search-scouting-id-btn")
+      .addEventListener("click", () => searchUsers("scoutingId"))
+    document
+      .getElementById("search-email-btn")
+      .addEventListener("click", () => searchUsers("email"))
+
+    document
+      .getElementById("modify-user-btn")
+      .addEventListener("click", () => modifyUser())
+    document
+      .getElementById("delete-user-btn")
+      .addEventListener("click", () => deleteUser())
+
+    document
+      .getElementById("leaderboard-by-points-btn")
+      .addEventListener("click", () => switchLeaderboard("points"))
+    document
+      .getElementById("leaderboard-by-users-btn")
+      .addEventListener("click", () => switchLeaderboard("users"))
+
+    loadLeaderboard()
+  }
+
+  // Import Firebase modules
+  import { initializeApp, getApp } from "firebase/app"
+  import { getFunctions, httpsCallable } from "firebase/functions"
+  import { getFirestore, doc, getDoc } from "firebase/firestore"
+
+  // Initalize Firebase constants
+  const app = getApp()
+  const db = getFirestore(app)
+  const functions = getFunctions(app)
+  const getLeaderboards = httpsCallable(functions, "getLeaderboards")
+
+  initGame() // Set up event listeners and load the leaderboard
 </script>
 
 <div class="columns-grid">
@@ -38,21 +177,13 @@ layout: private.njk
         />
 
         <div class="flex flex-wrap gap-2">
-          <button id="search-name-btn" onclick="" class="btn btn-search-option">
+          <button id="search-name-btn" class="btn btn-alternate-blue">
             Search Name
           </button>
-          <button
-            id="search-scouting-id-btn"
-            onclick=""
-            class="btn btn-search-option"
-          >
+          <button id="search-scouting-id-btn" class="btn btn-alternate-blue">
             Search Scouting ID
           </button>
-          <button
-            id="search-email-btn"
-            onclick=""
-            class="btn btn-search-option"
-          >
+          <button id="search-email-btn" class="btn btn-alternate-blue">
             Search Email
           </button>
         </div>
@@ -73,40 +204,51 @@ layout: private.njk
         <div class="modify-user-div">
           <h3 class="modify-user-title">User ID</h3>
           <input
-            id="modify-user-id text-scouting-pale-grey"
-            class="input-text"
+            id="modify-user-id"
+            class="input-text bg-gray-200!"
             type="text"
-            readonly
+            disabled
           />
         </div>
         <div class="modify-user-div">
           <h3 class="modify-user-title">Name</h3>
-          <input id="modify-user-id" class="input-text" type="text" />
+          <input id="modify-user-name" class="input-text" type="text" />
         </div>
 
         <div class="modify-user-div">
           <h3 class="modify-user-title">Current Points</h3>
-          <input id="modify-user-id" class="input-text" type="number" />
+          <input
+            id="modify-user-current-points"
+            class="input-text"
+            type="number"
+          />
         </div>
 
         <div class="modify-user-div">
           <h3 class="modify-user-title">Worth Points</h3>
-          <input id="modify-user-id" class="input-text" type="number" />
+          <input
+            id="modify-user-worth-points"
+            class="input-text"
+            type="number"
+          />
         </div>
 
         <div class="modify-user-div">
           <h3 class="modify-user-title">Worth Points Comment</h3>
-          <input id="modify-user-id" class="input-text" type="text" />
+          <input
+            id="modify-user-worth-points-comment"
+            class="input-text"
+            type="text"
+          />
         </div>
-
-        <div class="modify-user-div">
-          <h3 class="modify-user-title">Current Points</h3>
-          <input id="modify-user-id" class="input-text" type="number" />
+        <div class="flex flex-row gap-2 items-stretch">
+          <button id="modify-user-btn" class="btn btn-alternate-blue font-bold flex-1">
+            Save Changes
+          </button>
+          <button id="delete-user-btn" class="btn btn-alternate font-bold flex-1">
+            Delete User
+          </button>
         </div>
-
-        <button id="delete-user-btn" onclick="" class="btn btn-primary">
-          Delete User
-        </button>
       </div>
     </div>
   </div>
@@ -119,30 +261,41 @@ layout: private.njk
       <div class="card-contents">
         <div class="flex flex-row gap-2 items-stretch">
           <button
-          id="leaderboard-by-points"
-            onclick="switchLeaderboard('points')"
-            class="btn btn-leaderboard-option flex-1 btn-selected"
+            id="leaderboard-by-points-btn"
+            class="btn btn-alternate-tan flex-1 btn-selected"
           >
             By Points
           </button>
           <button
-          id="leaderboard-by-users"
-            onclick="switchLeaderboard('users')"
-            class="btn btn-leaderboard-option flex-1"
+            id="leaderboard-by-users-btn"
+            class="btn btn-alternate-tan flex-1"
           >
             By Users Met
           </button>
+        </div>
+
+        <div id="leaderboard-by-points" class="">
+          <p class="italic">Loading leaderboard...</p>
+        </div>
+        <div id="leaderboard-by-users" class="hidden">
+          <p class="italic">Loading leaderboard...</p>
         </div>
       </div>
     </div>
 
     <!-- Card -->
     <div class="card-padded">
-      <h2 class="item-title">Start New Game</h2>
+      <h2 class="item-title">Database</h2>
       <div class="card-contents">
-        <h3 class="item-subtitle">Export Game</h3>
-        <h3 class="item-subtitle">Import Game</h3>
-        <h3 class="item-subtitle">Wipe Game</h3>
+        <button id="database-export" class="btn btn-alternate flex-1">
+          Export Game
+        </button>
+        <button id="database-import" class="btn btn-alternate flex-1">
+          Import Game
+        </button>
+        <button id="database-wipe" class="btn btn-primary flex-1">
+          Wipe Game
+        </button>
       </div>
     </div>
   </div>
