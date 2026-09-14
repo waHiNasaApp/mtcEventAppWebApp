@@ -14,26 +14,14 @@
   --color-scouting-tan: #d6cebd;
   --color-scouting-grey: #515354;
   --color-scouting-pale-blue: #9ab3d5;
+  --color-scouting-light-blue: #9ab3d5;
   --color-scouting-dark-blue: #003366;
+  --color-scouting-pale-tan: #e9e9e4;
   --color-scouting-light-tan: #e9e9e4;
   --color-scouting-dark-tan: #ad9d7b;
   --color-scouting-pale-grey: #858787;
+  --color-scouting-light-grey: #858787;
   --color-scouting-dark-grey: #232528;
-}
-
-/* ============================================================
-   SITE-WIDE UTILITY CLASSES
-   ============================================================ */
-@utility card-base {
-  @apply bg-white rounded-xl shadow-sm border border-scouting-light-tan;
-}
-
-@utility item-title {
-  @apply font-bold text-scouting-dark-grey text-lg leading-tight;
-}
-
-@utility item-subtitle {
-  @apply text-scouting-dark-grey font-medium text-sm mt-1;
 }
 
 /* ============================================================
@@ -44,34 +32,50 @@
 }
 
 .card-padded {
-  @apply card-base p-6 flex flex-col;
+  @apply bg-white rounded-xl shadow-sm border border-scouting-light-tan p-6 flex flex-col gap-3 mt-6;
 }
 
 .section-title {
   @apply text-2xl font-bold text-scouting-dark-grey mb-1;
 }
 
+.card-contents {
+  @apply flex flex-col gap-4 mt-2;
+}
+
 /* ============================================================
-   BUTTONS
+   SITE-WIDE ELEMENTS
    ============================================================ */
+.item-title {
+  @apply font-bold text-scouting-dark-grey text-lg;
+}
+
+@utility item-subtitle {
+  @apply font-bold text-scouting-dark-grey text-base text-nowrap;
+}
+
+.input-text {
+  @apply w-full px-4 py-2 rounded-md border border-scouting-pale-grey bg-white text-scouting-dark-grey focus:outline-none focus:ring-1 focus:ring-scouting-blue;
+}
+
 .btn {
-  @apply px-4 py-2 rounded-md text-sm transition-all duration-200 inline-block;
+  @apply px-4 py-2 rounded-md text-sm transition-all duration-200 inline-block hover:brightness-90;
 }
 
 .btn-primary {
-  @apply bg-scouting-red text-white;
-}
-
-.btn-primary:hover {
-  @apply brightness-90;
+  @apply bg-scouting-red text-white font-bold;
 }
 
 .btn-secondary {
   @apply text-scouting-grey;
 }
 
-.btn-secondary:hover {
-  @apply text-scouting-dark-grey;
+.btn-search-option {
+  @apply border-scouting-blue border-2 text-scouting-blue bg-blue-50;
+}
+
+.btn-selected {
+  @apply border-3! font-bold!;
 }
 
 /* ============================================================
@@ -135,4 +139,15 @@
 
 .directory-button:hover {
   @apply brightness-80 shadow-md;
+}
+
+/* ============================================================
+   GAME.NJK CLASSES
+   ============================================================ */
+.modify-user-div {
+  @apply flex flex-row gap-2 items-stretch;
+}
+
+.modify-user-title {
+  @apply item-subtitle flex items-center;
 }
