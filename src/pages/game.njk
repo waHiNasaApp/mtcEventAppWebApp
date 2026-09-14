@@ -94,6 +94,105 @@ layout: private.njk
   }
 
   /**
+   * Searches the /users/ Firestore collection and renders a results grid.
+   *
+   * @param {string} type - The field to search ("firstNameLower", "scoutingId", or "emailLower")
+   */
+  async function searchUsers(type) {
+    const container = document.getElementById("user-search-list")
+    const searchInputElement = document.getElementById("user-search-input")
+
+    // Clear the existing container contents
+    container.innerHTML = ""
+
+    if (!searchInputElement) {
+      console.error("Search input element #user-search-input not found.")
+      return
+    }
+
+    const searchValue = searchInputElement.value.trim().toLowerCase()
+
+    // Prevent querying with an empty string if the user accidentally clicks search
+    if (!searchValue) {
+      container.innerHTML = "<p>Please enter a search term.</p>"
+      return
+    }
+
+    try {
+      // Build and execute the Firestore query
+      const usersRef = collection(db, "users")
+      const q = query(
+        usersRef,
+        where(type, ">=", searchValue),
+        where(type, "<=", searchValue + "\uf8ff")
+      )
+      const querySnapshot = await getDocs(q)
+
+      if (querySnapshot.empty) {
+        container.innerHTML = "<p>No users found.</p>"
+        return
+      }
+
+      // Set up the table/grid structure
+      const table = document.createElement("table")
+      table.style.width = "100%"
+      table.innerHTML = `
+      <thead>
+        <tr>
+          <th class="text-left">Name</th>
+          <th class="text-left">Scouting ID</th>
+          <th class="text-left">Current<br>Points</th>
+          <th class="text-left">Users<br>Met</th>
+          <th class="text-left">Worth<br>Points</th>
+          <th class="text-left"></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `
+
+      const tbody = table.querySelector("tbody")
+
+      // Populate the table with user documents
+      querySnapshot.forEach((doc) => {
+        const user = doc.data()
+
+        // Store the document ID in the user object
+        user.id = doc.id
+
+        const name = `${user.firstName || ""} ${user.lastInitial || ""}`.trim()
+
+        const tr = document.createElement("tr")
+        tr.innerHTML = `
+        <td>${name}</td>
+        <td>${user.scoutingId || ""}</td>
+        <td>${user.currentPoints || 0}</td>
+        <td>${user.numUsersMet || 0}</td>
+        <td>${user.worthPoints || 0}</td>
+        <td class="action-cell"></td>
+      `
+
+        // Programmatically create the button to safely pass the entire user object
+        const modifyBtn = document.createElement("button")
+        modifyBtn.className = "btn btn-alternate"
+        modifyBtn.textContent = "Modify"
+        modifyBtn.onclick = () => startModifyUser(user)
+
+        tr.querySelector(".action-cell").appendChild(modifyBtn)
+        tbody.appendChild(tr)
+      })
+
+      // Append the completed grid to the DOM
+      container.appendChild(table)
+    } catch (error) {
+      console.error("Error fetching users:", error)
+      container.innerHTML =
+        "<p>Error loading users. Check console for details.</p>"
+    }
+  }
+
+  function startModifyUser(user) {}
+
+  /**
    * Waits for an element to appear in the DOM.
    * @param {string} selector - The CSS selector of the element to wait for.
    * @returns {Promise<Element>} A promise that resolves with the DOM element.
@@ -123,13 +222,13 @@ layout: private.njk
     // Add event listeners
     document
       .getElementById("search-name-btn")
-      .addEventListener("click", () => searchUsers("name"))
+      .addEventListener("click", () => searchUsers("firstNameLower"))
     document
       .getElementById("search-scouting-id-btn")
       .addEventListener("click", () => searchUsers("scoutingId"))
     document
       .getElementById("search-email-btn")
-      .addEventListener("click", () => searchUsers("email"))
+      .addEventListener("click", () => searchUsers("emailLower"))
 
     document
       .getElementById("modify-user-btn")
@@ -152,6 +251,7 @@ layout: private.njk
   import { initializeApp, getApp } from "firebase/app"
   import { getFunctions, httpsCallable } from "firebase/functions"
   import { getFirestore, doc, getDoc } from "firebase/firestore"
+  import { collection, query, where, getDocs } from "firebase/firestore"
 
   // Initalize Firebase constants
   const app = getApp()
@@ -178,7 +278,7 @@ layout: private.njk
 
         <div class="flex flex-wrap gap-2">
           <button id="search-name-btn" class="btn btn-alternate-blue">
-            Search Name
+            Search Name (First Only)
           </button>
           <button id="search-scouting-id-btn" class="btn btn-alternate-blue">
             Search Scouting ID
@@ -189,10 +289,11 @@ layout: private.njk
         </div>
 
         <div id="user-list">
-          <h3 class="item-subtitle">User List</h3>
-          <p id="user-list-hint" class="text-scouting-pale-grey italic">
-            Start a search to view users...
-          </p>
+          <div id="user-search-list">
+            <p class="text-scouting-pale-grey italic">
+              Start a search to view users...
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -242,10 +343,16 @@ layout: private.njk
           />
         </div>
         <div class="flex flex-row gap-2 items-stretch">
-          <button id="modify-user-btn" class="btn btn-alternate-blue font-bold flex-1">
+          <button
+            id="modify-user-btn"
+            class="btn btn-alternate-blue font-bold flex-1"
+          >
             Save Changes
           </button>
-          <button id="delete-user-btn" class="btn btn-alternate font-bold flex-1">
+          <button
+            id="delete-user-btn"
+            class="btn btn-alternate font-bold flex-1"
+          >
             Delete User
           </button>
         </div>
