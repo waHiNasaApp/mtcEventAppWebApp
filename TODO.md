@@ -6,7 +6,6 @@
   - Modify user
     - Recursion
   - Delete user
-    - Confirmation
     - Recursion
   - Database
     - Export
