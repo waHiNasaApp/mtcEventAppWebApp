@@ -3,8 +3,6 @@
 
 ### To-Do
 - Web Backend and Functions
-  - User search
-  - User search --> Modify user
   - Modify user
   - Database
     - Export

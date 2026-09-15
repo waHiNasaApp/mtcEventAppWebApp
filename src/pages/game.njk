@@ -49,9 +49,7 @@ layout: private.njk
                         ${index + 1}
                     </div>
                     <div class="font-semibold">
-                        ${user.firstName} ${
-          user.lastInitial
-        }. - <span class="font-normal text-sm">ID: ${user.scoutingId}</span>
+                        ${user.fullName} - <span class="font-normal text-sm">ID: ${user.scoutingId}</span>
                     </div>
                 </div>
                 <div class="font-bold">
@@ -73,9 +71,7 @@ layout: private.njk
                         ${index + 1}
                     </div>
                     <div class="font-semibold">
-                        ${user.firstName} ${
-          user.lastInitial
-        }. - <span class="font-normal text-sm">ID: ${user.scoutingId}</span>
+                        ${user.fullName} - <span class="font-normal text-sm">ID: ${user.scoutingId}</span>
                     </div>
                 </div>
                 <div class="font-bold">
@@ -96,7 +92,7 @@ layout: private.njk
   /**
    * Searches the /users/ Firestore collection and renders a results grid.
    *
-   * @param {string} type - The field to search ("firstNameLower", "scoutingId", or "emailLower")
+   * @param {string} type - The field to search ("fullName", "scoutingId", or "emailLower")
    */
   async function searchUsers(type) {
     const container = document.getElementById("user-search-list")
@@ -159,11 +155,11 @@ layout: private.njk
         // Store the document ID in the user object
         user.id = doc.id
 
-        const name = `${user.firstName || ""} ${user.lastInitial || ""}`.trim()
+        const fullName = `${user.fullName}`
 
         const tr = document.createElement("tr")
         tr.innerHTML = `
-        <td>${name}</td>
+        <td>${fullName}</td>
         <td>${user.scoutingId || ""}</td>
         <td>${user.currentPoints || 0}</td>
         <td>${user.numUsersMet || 0}</td>
@@ -175,7 +171,7 @@ layout: private.njk
         const modifyBtn = document.createElement("button")
         modifyBtn.className = "btn btn-alternate"
         modifyBtn.textContent = "Modify"
-        modifyBtn.onclick = () => startModifyUser(user)
+        modifyBtn.onclick = () => startModifyUser(doc)
 
         tr.querySelector(".action-cell").appendChild(modifyBtn)
         tbody.appendChild(tr)
@@ -190,7 +186,67 @@ layout: private.njk
     }
   }
 
-  function startModifyUser(user) {}
+  /**
+   *  Loads the user's data into the modify fields
+   *
+   * @param {Firestore Doc} doc The doc of the user to load
+   */
+  function startModifyUser(doc) {
+    const userIdInput = document.getElementById("modify-user-id")
+    const userNameInput = document.getElementById("modify-user-name")
+    const userCurrentPointsInput = document.getElementById(
+      "modify-user-current-points"
+    )
+    const userWorthPointsInput = document.getElementById(
+      "modify-user-worth-points"
+    )
+    const userWorthPointsCommentInput = document.getElementById(
+      "modify-user-worth-points-comment"
+    )
+
+    const user = doc.data()
+
+    userIdInput.value = doc.id
+    userNameInput.value = user.fullName
+    userCurrentPointsInput.value = user.currentPoints
+    userWorthPointsInput.value = user.worthPoints
+    userWorthPointsCommentInput.value = user.userWorthPointsComment ?? ""
+  }
+
+  async function modifyUser() {
+    const userIdInput = document.getElementById("modify-user-id")
+    const userNameInput = document.getElementById("modify-user-name")
+    const userCurrentPointsInput = document.getElementById(
+      "modify-user-current-points"
+    )
+    const userWorthPointsInput = document.getElementById(
+      "modify-user-worth-points"
+    )
+    const userWorthPointsCommentInput = document.getElementById(
+      "modify-user-worth-points-comment"
+    )
+
+    // Get userId and docRef
+    const userId = userIdInput.value
+    const docRef = doc(db, "users", userId)
+
+    await setDoc(
+      docRef,
+      {
+        fullName: userNameInput.value,
+        currentPoints: userCurrentPointsInput.value,
+        worthPoints: userWorthPointsInput.value,
+        userWorthPointsComment: userWorthPointsCommentInput.value,
+      },
+      { merge: true }
+    )
+  }
+
+  async function deleteUser() {
+    const userIdInput = document.getElementById("modify-user-id")
+    const userId = userIdInput.value
+    //FIXME: Delete user code
+  }
 
   /**
    * Waits for an element to appear in the DOM.
@@ -222,7 +278,7 @@ layout: private.njk
     // Add event listeners
     document
       .getElementById("search-name-btn")
-      .addEventListener("click", () => searchUsers("firstNameLower"))
+      .addEventListener("click", () => searchUsers("fullNameLower"))
     document
       .getElementById("search-scouting-id-btn")
       .addEventListener("click", () => searchUsers("scoutingId"))
@@ -278,7 +334,7 @@ layout: private.njk
 
         <div class="flex flex-wrap gap-2">
           <button id="search-name-btn" class="btn btn-alternate-blue">
-            Search Name (First Only)
+            Search Name
           </button>
           <button id="search-scouting-id-btn" class="btn btn-alternate-blue">
             Search Scouting ID
