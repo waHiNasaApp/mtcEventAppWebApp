@@ -46,7 +46,8 @@
 /* ============================================================
    SITE-WIDE ELEMENTS
    ============================================================ */
-.item-title {
+/* ----- Titles and Text ----- */
+   .item-title {
   @apply font-bold text-scouting-dark-grey text-lg;
 }
 
@@ -58,6 +59,16 @@
   @apply w-full px-4 py-2 rounded-md border border-scouting-pale-grey bg-white text-scouting-dark-grey focus:outline-none focus:ring-1 focus:ring-scouting-blue;
 }
 
+/* ----- Toasts ----- */
+.toast-container {
+  @apply fixed bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-50 pointer-events-none;
+}
+
+.toast-message {
+  @apply bg-slate-800 text-white px-5 py-2.5 rounded-full shadow-lg text-sm font-medium transition-opacity duration-300 pointer-events-auto;
+}
+
+/* ----- Buttons ----- */
 .btn {
   @apply px-4 py-2 rounded-md text-sm transition-all duration-200 inline-block hover:brightness-90;
 }
@@ -161,7 +172,7 @@
 }
 
 .leaderboard-user-row {
-@apply flex items-center justify-between p-4 mb-2 bg-white rounded-lg shadow-sm border border-gray-100
+@apply flex items-center justify-between p-4 mb-4 bg-white rounded-lg shadow-sm border border-gray-100
 }
 
 .leaderboard-rank {

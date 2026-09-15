@@ -20,7 +20,7 @@ exports.getLeaderboards = functions.https.onCall(async (data, context) => {
 
   const db = admin.firestore();
 
-  // Helper function to replace NaN with 0 in the data
+  // Helper function to replace NaN and Undefined with 0 in the data
   const sanitizeData = (data) => {
     for (const key in data) {
       if (Number.isNaN(data[key])) {
