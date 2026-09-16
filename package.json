@@ -20,7 +20,8 @@
     "deployfuncs": "firebase deploy --only functions",
     "deployfiles": "npm run sync && firebase deploy --only hosting:councilapp3",
     "deployall": "npm run sync && firebase deploy --only functions && firebase deploy --only hosting:councilapp3",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "demousers": "node createDemoUsers.js"
   },
   "dependencies": {
     "@11ty/eleventy": "^3.1.5",
@@ -28,7 +29,7 @@
     "cheerio": "^1.2.0",
     "dotenv": "^17.4.2",
     "firebase": "^12.19.0",
-    "firebase-admin": "^13.8.0"
+    "firebase-admin": "^13.10.0"
   },
   "devDependencies": {
     "@11ty/eleventy-plugin-vite": "^7.1.1",
