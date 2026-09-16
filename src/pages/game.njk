@@ -4,6 +4,11 @@ layout: private.njk
 ---
 
 <script type="module">
+  /**
+   *  Switch which leaderboard is being displayed
+   *
+   * @param {String} type Either "points" or "users"
+   */
   function switchLeaderboard(type) {
     if (type == "points") {
       // Switch leaderboard to "By Points"
@@ -20,6 +25,9 @@ layout: private.njk
     }
   }
 
+  /**
+   *  Load the leaderboards
+   */
   async function loadLeaderboard() {
     try {
       // Call the Firebase function with n=10
@@ -104,7 +112,7 @@ layout: private.njk
 
     const searchValue = searchInputElement.value.trim().toLowerCase()
 
-    // Prevent querying with an empty string if the user accidentally clicks search
+    // Prevent querying with an empty string
     if (!searchValue) {
       searchResultsContainer.innerHTML = "<p>Please enter a search term.</p>"
       return
@@ -183,26 +191,40 @@ layout: private.njk
   }
 
   /**
-   *  Loads the user's data into the modify fields
+   *  Loads the user's data into the modify fields and into global variables
    *
    * @param {Firestore Doc} doc The doc of the user to load
    */
   function startModifyUser(doc) {
     const user = doc.data()
 
+    // Load the selected user data into the fields
+    // Store the selected user data in the global variables
     userIdInput.value = doc.id
+    usrUserId = doc.id
     userNameInput.value = user.fullName
+    usrFullName = user.fullName
     userCurrentPointsInput.value = user.currentPoints
+    usrCurrentPoints = user.currentPoints
     userWorthPointsInput.value = user.worthPoints
+    usrWorthPoints = user.worthPoints
     userWorthPointsCommentInput.value = user.userWorthPointsComment ?? ""
+    usrWorthPointsComment = user.userWorthPointsComment ?? ""
   }
 
+  /**
+   *  Modify a selected user
+   */
   async function modifyUser() {
     // Get userId and docRef
     const userId = userIdInput.value
     const docRef = doc(db, "users", userId)
 
+    // Prevent editing of the fields
+    getLock()
+
     try {
+      // Modify the user
       await updateDoc(docRef, {
         fullName: userNameInput.value,
         currentPoints: Number(userCurrentPointsInput.value),
@@ -210,8 +232,10 @@ layout: private.njk
         userWorthPointsComment: userWorthPointsCommentInput.value,
       })
 
-      //FIXME: add recursion to modify from all users who met this user
+      // Propogate the modifications out
+      propogateEditUser("modify")
 
+      // Confirm success
       showToast("User modified successfully!")
 
       // Reload data
@@ -221,7 +245,11 @@ layout: private.njk
     }
   }
 
+  /**
+   *  Delete a selected user
+   */
   async function deleteUser() {
+    // Ask for confirmation
     const isConfirmed = window.confirm(
       "Are you sure you want to delete this user? This action cannot be undone."
     )
@@ -233,10 +261,17 @@ layout: private.njk
     const userId = userIdInput.value
     const docRef = doc(db, "users", userId)
 
-    try {
-      await deleteDoc(docRef)
-      //FIXME: add recursion to delete from all users who met this user
+    // Prevent editing of the fields
+    getLock()
 
+    try {
+      // Delete the user
+      await deleteDoc(docRef)
+
+      // Propogate the deletion out
+      propogateEditUser("delete")
+
+      // Confirm success
       showToast("User deleted successfully!")
 
       // Reload data
@@ -246,6 +281,29 @@ layout: private.njk
     }
   }
 
+  /**
+   *  Disables and greys out input fields
+   */
+  function getLock() {
+    // Disable fields
+    userNameInput.disabled = true
+    userCurrentPointsInput.disabled = true
+    userWorthPointsInput.disabled = true
+    userWorthPointsCommentInput.disabled = true
+
+    // Grey out fields
+    userNameInput.classList.add = "bg-gray-200!"
+    userCurrentPointsInput.classList.add = "bg-gray-200!"
+    userWorthPointsInput.classList.add = "bg-gray-200!"
+    userWorthPointsCommentInput.classList.add = "bg-gray-200!"
+  }
+
+  /**
+   *  Clears input fields, enables them, and puts them back to white
+   *  Resets global usr variables
+   *  Resets the search
+   *  Reloads the leaderboard
+   */
   async function resetAndReload() {
     // Clear input fields
     userIdInput.value = ""
@@ -254,11 +312,94 @@ layout: private.njk
     userWorthPointsInput.value = ""
     userWorthPointsCommentInput.value = ""
 
+    // Enable fields again
+    userNameInput.disabled = false
+    userCurrentPointsInput.disabled = false
+    userWorthPointsInput.disabled = false
+    userWorthPointsCommentInput.disabled = false
+
+    // Ungrey fields
+    userNameInput.classList.remove = "bg-gray-200!"
+    userCurrentPointsInput.classList.remove = "bg-gray-200!"
+    userWorthPointsInput.classList.remove = "bg-gray-200!"
+    userWorthPointsCommentInput.classList.remove = "bg-gray-200!"
+
+    // Reset global usr variables
+    usrUserId = ""
+    usrFullName = ""
+    usrCurrentPoints = 0
+    usrWorthPoints = 0
+    usrWorthPointsComment = ""
+
     // Reset search
     searchResultsContainer.innerHTML = `<p class="text-scouting-pale-grey italic">Start a search to view users...</p>`
 
     // Reload leaderboard
     await loadLeaderboard()
+  }
+
+  /**
+   *  Calls a Firebase Function to propgate a user modification or deletion 
+   *
+   * @param {*} actionType
+   */
+  async function propogateEditUser(actionType) {
+    let editType = ""
+    let editData = { id: usrUserId }
+
+    // Handle Delete Action
+    if (actionType === "delete") {
+      editType = "delete"
+      editData.name = usrFullName
+      editData.points = usrWorthPoints
+    }
+    // Handle Modify Action
+    else if (actionType === "modify") {
+      const newName = userNameInput.value.trim()
+      const newWorthPoints = Number(userWorthPointsInput.value)
+
+      const nameChanged = newName !== usrFullName
+      const pointsChanged = newWorthPoints !== usrWorthPoints
+
+      // Determine the type of modification
+      if (nameChanged && pointsChanged) {
+        editType = "nameAndWorthPoints"
+        editData.oldName = usrFullName
+        editData.newName = newName
+        editData.oldPoints = usrWorthPoints
+        editData.newPoints = newWorthPoints
+      } else if (nameChanged) {
+        editType = "name"
+        editData.oldName = usrFullName
+        editData.newName = newName
+      } else if (pointsChanged) {
+        editType = "worthPoints"
+        editData.oldPoints = usrWorthPoints
+        editData.newPoints = newWorthPoints
+      } else {
+        console.log("No relevant changes detected. Skipping function call.")
+        return
+      }
+    }
+    // Catch invalid parameters
+    else {
+      console.error("Invalid actionType. Must be 'modify' or 'delete'.")
+      return
+    }
+
+    // Call the Firebase Function
+    try {
+      console.log(`Calling propogateEdit with type: ${editType}...`)
+
+      const result = await triggerPropogateEdit({
+        editType: editType,
+        editData: editData,
+      })
+
+      console.log("Success:", result.data.message)
+    } catch (error) {
+      console.error("Error executing recursive edit:", error)
+    }
   }
 
   /**
@@ -359,9 +500,17 @@ layout: private.njk
   const db = getFirestore(app)
   const functions = getFunctions(app)
   const getLeaderboards = httpsCallable(functions, "getLeaderboards")
+  const triggerPropogateEdit = httpsCallable(functions, "propogateEdit")
 
   // Wait for DOM content to be loaded in
   await waitForElement(".columns-grid")
+
+  // Setup user variables
+  var usrUserId = ""
+  var usrFullName = ""
+  var usrCurrentPoints = 0
+  var usrWorthPoints = 0
+  var usrWorthPointsComment = ""
 
   // Set up DOM elements
   const userIdInput = document.getElementById("modify-user-id")
