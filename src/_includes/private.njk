@@ -50,9 +50,9 @@ layout: base.njk
     }
 
     try {
-      const pageId =
-        window.location.pathname.replace(/^\/|\/$/g, "").replace(/\//g, "_") ||
-        "home"
+      const pageId = window.location.pathname
+        .replace(/^\/|\/$/g, "")
+        .replace(/\//g, "_")
 
       console.log("Fetching content for ID:", pageId)
 
@@ -62,6 +62,9 @@ layout: base.njk
         container.innerHTML = docSnap.data().content
         container.classList.remove("hidden")
         loadingEl.style.display = "none"
+
+        // Signal that the private content has been loaded and displayed.
+        document.dispatchEvent(new Event("privateContentLoaded"))
       } else {
         loadingEl.innerHTML = `Error: Content for "${pageId}" not found in vault.`
       }
