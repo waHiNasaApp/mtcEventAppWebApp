@@ -233,7 +233,7 @@ layout: private.njk
       })
 
       // Propogate the modifications out
-      propogateEditUser("modify")
+      await propogateEditUser("modify")
 
       // Confirm success
       showToast("User modified successfully!")
@@ -269,7 +269,7 @@ layout: private.njk
       await deleteDoc(docRef)
 
       // Propogate the deletion out
-      propogateEditUser("delete")
+      await propogateEditUser("delete")
 
       // Confirm success
       showToast("User deleted successfully!")

@@ -101,13 +101,25 @@ exports.propogateEdit = onCall(async (request) => {
 
       const currentPoints = Number(userData.currentPoints) || 0;
       const numUsersMet = Number(userData.numUsersMet) || 0;
+      const usersMet = userData.usersMet || [];
+      const usersMetId = userData.usersMetId || [];
+      const usersMetPoints = userData.usersMetPoints || [];
 
       switch (editType) {
         case 'delete': {
-          const { id, name, points } = editData;
-          if (usersMetId.includes(id) || usersMet.includes(name)) {
-            updates.usersMetId = usersMetId.filter((uid) => uid !== id);
-            updates.usersMet = usersMet.filter((n) => n !== name);
+          const { id, points } = editData;
+          const userIndex = usersMetId.indexOf(id);
+
+          if (userIndex > -1) {
+            // Remove the user from all three arrays at the specific index
+            usersMetId.splice(userIndex, 1);
+            usersMet.splice(userIndex, 1);
+            usersMetPoints.splice(userIndex, 1);
+
+            updates.usersMetId = usersMetId;
+            updates.usersMet = usersMet;
+            updates.usersMetPoints = usersMetPoints;
+            
             updates.currentPoints = currentPoints - Number(points);
             updates.numUsersMet = Math.max(0, numUsersMet - 1);
             needsUpdate = true;
@@ -126,25 +138,55 @@ exports.propogateEdit = onCall(async (request) => {
         }
         case 'worthPoints': {
           const { id, oldPoints, newPoints } = editData;
-          if (usersMetId.includes(id)) {
-            updates.currentPoints =
-              currentPoints + (Number(newPoints) - Number(oldPoints));
+          let pointDifference = 0;
+          let userIndices = [];
+          
+          // Find all occurrences of the user ID
+          usersMetId.forEach((uid, index) => {
+            if (uid === id) {
+              userIndices.push(index);
+            }
+          });
+
+          if (userIndices.length > 0) {
+            userIndices.forEach(index => {
+                // Update the points in the usersMetPoints array
+                usersMetPoints[index] = Number(newPoints);
+                pointDifference += (Number(newPoints) - Number(oldPoints));
+            });
+            
+            updates.usersMetPoints = usersMetPoints;
+            updates.currentPoints = currentPoints + pointDifference;
             needsUpdate = true;
           }
           break;
         }
         case 'nameAndWorthPoints': {
           const { id, oldName, newName, oldPoints, newPoints } = editData;
+          let pointDifference = 0;
+          let userIndices = [];
 
-          if (usersMet.includes(oldName)) {
-            updates.usersMet = usersMet.map((n) =>
-              n === oldName ? newName : n,
-            );
-            needsUpdate = true;
-          }
-          if (usersMetId.includes(id)) {
-            updates.currentPoints =
-              currentPoints + (Number(newPoints) - Number(oldPoints));
+          // Find all occurrences of the user ID to update name and points
+          usersMetId.forEach((uid, index) => {
+            if (uid === id) {
+              userIndices.push(index);
+            }
+          });
+
+          if (userIndices.length > 0) {
+            userIndices.forEach(index => {
+              // Update name
+              if (usersMet[index] === oldName) {
+                usersMet[index] = newName;
+              }
+              // Update points
+              usersMetPoints[index] = Number(newPoints);
+              pointDifference += (Number(newPoints) - Number(oldPoints));
+            });
+            
+            updates.usersMet = usersMet;
+            updates.usersMetPoints = usersMetPoints;
+            updates.currentPoints = currentPoints + pointDifference;
             needsUpdate = true;
           }
           break;

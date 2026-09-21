@@ -79,18 +79,21 @@ async function seedUsers() {
     return { ...user, docRef, docid: docRef.id };
   });
 
-  // Create a lookup map of fullName -> docid
+  // Create a lookup map of fullName -> docid and fullName -> worthPoints
   const nameToIdMap = {};
+  const nameToWorthPointsMap = {};
   usersWithRefs.forEach(user => {
     nameToIdMap[user.fullName] = user.docid;
+    nameToWorthPointsMap[user.fullName] = user.worthPoints;
   });
 
   // Prepare the batch write
   const batch = db.batch();
 
   usersWithRefs.forEach(user => {
-    // Dynamically map the usersMet names to their generated docids
+    // Dynamically map the usersMet names to their generated docids and worthPoints
     const usersMetId = user.usersMet.map(name => nameToIdMap[name]);
+    const usersMetPoints = user.usersMet.map(name => nameToWorthPointsMap[name]);
 
     const firestoreData = {
       fullName: user.fullName,
@@ -104,6 +107,7 @@ async function seedUsers() {
       numUsersMet: user.numUsersMet,
       usersMet: user.usersMet,
       usersMetId: usersMetId,
+      usersMetPoints: usersMetPoints, // Added this array
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     };
 
