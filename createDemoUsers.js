@@ -12,69 +12,69 @@ async function seedUsers() {
 
   const rawData = [
     {
-      fullName: "Harry P.",
-      fullNameLower: "harry p.",
-      scoutingId: "200001",
-      email: "chosenone@hogwarts.edu",
-      emailLower: "chosenone@hogwarts.edu",
+      fullName: 'Harry P.',
+      fullNameLower: 'harry p.',
+      scoutingId: '200001',
+      email: 'chosenone@hogwarts.edu',
+      emailLower: 'chosenone@hogwarts.edu',
       currentPoints: 141,
       worthPoints: 50,
-      pointValueComment: "The chosen one",
+      pointValueComment: 'The chosen one',
       numUsersMet: 4,
-      usersMet: ["Tom R.", "Albus D.", "Ron W.", "Hermione G."]
+      usersMet: ['Tom R.', 'Albus D.', 'Ron W.', 'Hermione G.'],
     },
     {
-      fullName: "Tom R.",
-      fullNameLower: "tom r.",
-      scoutingId: "200002",
-      email: "lordvoldemort@deatheaters.inc",
-      emailLower: "lordvoldemort@deatheaters.inc",
+      fullName: 'Tom R.',
+      fullNameLower: 'tom r.',
+      scoutingId: '200002',
+      email: 'lordvoldemort@deatheaters.inc',
+      emailLower: 'lordvoldemort@deatheaters.inc',
       currentPoints: 140,
       worthPoints: 1,
       pointValueComment: "Couldn't even defeat a high school",
       numUsersMet: 3,
-      usersMet: ["Albus D.", "Ron W.", "Hermione G."]
+      usersMet: ['Albus D.', 'Ron W.', 'Hermione G.'],
     },
     {
-      fullName: "Albus D.",
-      fullNameLower: "albus d.",
-      scoutingId: "200003",
-      email: "headmaster@hogwarts.edu",
-      emailLower: "headmaster@hogwarts.edu",
+      fullName: 'Albus D.',
+      fullNameLower: 'albus d.',
+      scoutingId: '200003',
+      email: 'headmaster@hogwarts.edu',
+      emailLower: 'headmaster@hogwarts.edu',
       currentPoints: 40,
       worthPoints: 100,
-      pointValueComment: "",
+      pointValueComment: '',
       numUsersMet: 2,
-      usersMet: ["Ron W.", "Hermione G."]
+      usersMet: ['Ron W.', 'Hermione G.'],
     },
     {
-      fullName: "Ron W.",
-      fullNameLower: "ron w.",
-      scoutingId: "200004",
-      email: "redhead@hogwarts.edu",
-      emailLower: "redhead@hogwarts.edu",
+      fullName: 'Ron W.',
+      fullNameLower: 'ron w.',
+      scoutingId: '200004',
+      email: 'redhead@hogwarts.edu',
+      emailLower: 'redhead@hogwarts.edu',
       currentPoints: 20,
       worthPoints: 20,
-      pointValueComment: "",
+      pointValueComment: '',
       numUsersMet: 1,
-      usersMet: ["Hermione G."]
+      usersMet: ['Hermione G.'],
     },
     {
-      fullName: "Hermione G.",
-      fullNameLower: "hermione g.",
-      scoutingId: "200005",
-      email: "thesmartone@hogwarts.edu",
-      emailLower: "thesmartone@hogwarts.edu",
+      fullName: 'Hermione G.',
+      fullNameLower: 'hermione g.',
+      scoutingId: '200005',
+      email: 'thesmartone@hogwarts.edu',
+      emailLower: 'thesmartone@hogwarts.edu',
       currentPoints: 0,
       worthPoints: 20,
-      pointValueComment: "",
+      pointValueComment: '',
       numUsersMet: 0,
-      usersMet: []
-    }
+      usersMet: [],
+    },
   ];
 
   // Pre-generate document references to obtain the dynamic docids
-  const usersWithRefs = rawData.map(user => {
+  const usersWithRefs = rawData.map((user) => {
     const docRef = usersRef.doc();
     return { ...user, docRef, docid: docRef.id };
   });
@@ -82,7 +82,7 @@ async function seedUsers() {
   // Create a lookup map of fullName -> docid and fullName -> worthPoints
   const nameToIdMap = {};
   const nameToWorthPointsMap = {};
-  usersWithRefs.forEach(user => {
+  usersWithRefs.forEach((user) => {
     nameToIdMap[user.fullName] = user.docid;
     nameToWorthPointsMap[user.fullName] = user.worthPoints;
   });
@@ -90,10 +90,12 @@ async function seedUsers() {
   // Prepare the batch write
   const batch = db.batch();
 
-  usersWithRefs.forEach(user => {
+  usersWithRefs.forEach((user) => {
     // Dynamically map the usersMet names to their generated docids and worthPoints
-    const usersMetId = user.usersMet.map(name => nameToIdMap[name]);
-    const usersMetPoints = user.usersMet.map(name => nameToWorthPointsMap[name]);
+    const usersMetId = user.usersMet.map((name) => nameToIdMap[name]);
+    const usersMetPoints = user.usersMet.map(
+      (name) => nameToWorthPointsMap[name],
+    );
 
     const firestoreData = {
       fullName: user.fullName,
@@ -108,7 +110,7 @@ async function seedUsers() {
       usersMet: user.usersMet,
       usersMetId: usersMetId,
       usersMetPoints: usersMetPoints, // Added this array
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 
     // Add the set operation to the batch
@@ -118,9 +120,9 @@ async function seedUsers() {
   // Commit the batch to Firestore
   try {
     await batch.commit();
-    console.log("Successfully seeded users to Firestore.");
+    console.log('Successfully seeded users to Firestore.');
   } catch (error) {
-    console.error("Error writing to Firestore: ", error);
+    console.error('Error writing to Firestore: ', error);
   }
 }
 

@@ -119,7 +119,7 @@ exports.propogateEdit = onCall(async (request) => {
             updates.usersMetId = usersMetId;
             updates.usersMet = usersMet;
             updates.usersMetPoints = usersMetPoints;
-            
+
             updates.currentPoints = currentPoints - Number(points);
             updates.numUsersMet = Math.max(0, numUsersMet - 1);
             needsUpdate = true;
@@ -140,7 +140,7 @@ exports.propogateEdit = onCall(async (request) => {
           const { id, oldPoints, newPoints } = editData;
           let pointDifference = 0;
           let userIndices = [];
-          
+
           // Find all occurrences of the user ID
           usersMetId.forEach((uid, index) => {
             if (uid === id) {
@@ -149,12 +149,12 @@ exports.propogateEdit = onCall(async (request) => {
           });
 
           if (userIndices.length > 0) {
-            userIndices.forEach(index => {
-                // Update the points in the usersMetPoints array
-                usersMetPoints[index] = Number(newPoints);
-                pointDifference += (Number(newPoints) - Number(oldPoints));
+            userIndices.forEach((index) => {
+              // Update the points in the usersMetPoints array
+              usersMetPoints[index] = Number(newPoints);
+              pointDifference += Number(newPoints) - Number(oldPoints);
             });
-            
+
             updates.usersMetPoints = usersMetPoints;
             updates.currentPoints = currentPoints + pointDifference;
             needsUpdate = true;
@@ -174,16 +174,16 @@ exports.propogateEdit = onCall(async (request) => {
           });
 
           if (userIndices.length > 0) {
-            userIndices.forEach(index => {
+            userIndices.forEach((index) => {
               // Update name
               if (usersMet[index] === oldName) {
                 usersMet[index] = newName;
               }
               // Update points
               usersMetPoints[index] = Number(newPoints);
-              pointDifference += (Number(newPoints) - Number(oldPoints));
+              pointDifference += Number(newPoints) - Number(oldPoints);
             });
-            
+
             updates.usersMet = usersMet;
             updates.usersMetPoints = usersMetPoints;
             updates.currentPoints = currentPoints + pointDifference;

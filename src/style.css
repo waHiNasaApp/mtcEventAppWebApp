@@ -47,7 +47,7 @@
    SITE-WIDE ELEMENTS
    ============================================================ */
 /* ----- Titles and Text ----- */
-   .item-title {
+.item-title {
   @apply font-bold text-scouting-dark-grey text-lg;
 }
 
@@ -172,7 +172,7 @@
 }
 
 .leaderboard-user-row {
-@apply flex items-center justify-between p-4 mb-4 bg-white rounded-lg shadow-sm border border-gray-100
+  @apply flex items-center justify-between p-4 mb-4 bg-white rounded-lg shadow-sm border border-gray-100;
 }
 
 .leaderboard-rank {
