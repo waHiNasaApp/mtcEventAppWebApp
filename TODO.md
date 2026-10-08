@@ -1,15 +1,15 @@
 # Game
 
 ### To-Do
-- Web Backend and Functions
-  - Database
-    - Export
-    - Import
-    - Wipe
+
 
 # Notifications
 
 ### To-Do
 - Plan
+  - Send Notification
+    - Option to schedule it
+  - Scheduled Notifications
+  - Sent Notifications
 - Frontend
 - Backend

@@ -224,3 +224,127 @@ exports.propogateEdit = onCall(async (request) => {
     );
   }
 });
+
+/**
+ * Export Game Data
+ * Fetches all users and returns them as a JSON object.
+ */
+exports.exportGameData = functions.https.onCall(async (data, context) => {
+  // Optional: Add admin auth check here
+  // if (!context.auth || context.auth.token.admin !== true) {
+  //     throw new functions.https.HttpsError("permission-denied", "Only admins can export data.");
+  // }
+
+  const db = admin.firestore();
+  const exportData = { users: {} };
+
+  try {
+    const usersSnapshot = await db.collection('users').get();
+    usersSnapshot.forEach((doc) => {
+      exportData.users[doc.id] = doc.data();
+    });
+
+    return exportData;
+  } catch (error) {
+    throw new functions.https.HttpsError(
+      'internal',
+      'Failed to export data.',
+      error,
+    );
+  }
+});
+
+/**
+ * Import Game Data
+ * Receives a JSON object and safely batch-writes it to the database.
+ */
+exports.importGameData = functions.https.onCall(async (data, context) => {
+    // 1. Handle differences between Firebase v1/v2 and extra data wrappers
+    const payload = data.data || data;
+
+    // 2. Hunt for the 'users' object regardless of how the JSON is wrapped
+    let users = null;
+    if (payload.users) {
+        users = payload.users;
+    } else if (payload.gameData && payload.gameData.users) {
+        users = payload.gameData.users;
+    } else if (payload.data && payload.data.users) {
+        users = payload.data.users;
+    }
+
+    // 3. Reject if we still can't find valid user data
+    if (!users || typeof users !== 'object') {
+        throw new functions.https.HttpsError(
+            "invalid-argument", 
+            "Invalid format: Could not locate the 'users' object in the file."
+        );
+    }
+
+    const db = admin.firestore();
+    try {
+        let batch = db.batch();
+        let operationCount = 0;
+
+        for (const [docId, userData] of Object.entries(users)) {
+            const docRef = db.collection("users").doc(docId);
+            batch.set(docRef, userData);
+            operationCount++;
+
+            if (operationCount === 500) {
+                await batch.commit();
+                batch = db.batch();
+                operationCount = 0;
+            }
+        }
+
+        if (operationCount > 0) {
+            await batch.commit();
+        }
+
+        return { message: "Import successful" };
+    } catch (error) {
+        throw new functions.https.HttpsError("internal", "Failed to write data.", error);
+    }
+});
+
+/**
+ * Wipe Game Data
+ * Deletes all documents in the 'users' collection.
+ */
+exports.wipeGameData = functions.https.onCall(async (data, context) => {
+  // Optional: Add admin auth check here
+
+  const db = admin.firestore();
+
+  try {
+    const usersSnapshot = await db.collection('users').get();
+
+    let batch = db.batch();
+    let operationCount = 0;
+
+    for (const doc of usersSnapshot.docs) {
+      batch.delete(doc.ref);
+      operationCount++;
+
+      // Chunk deletions to bypass the 500 operation batch limit
+      if (operationCount === 500) {
+        await batch.commit();
+        batch = db.batch();
+        operationCount = 0;
+      }
+    }
+
+    // Commit remaining deletions
+    if (operationCount > 0) {
+      await batch.commit();
+    }
+
+    return { message: 'Database wiped successfully' };
+  } catch (error) {
+    throw new functions.https.HttpsError(
+      'internal',
+      'Failed to wipe data.',
+      error,
+    );
+  }
+});

@@ -26,6 +26,9 @@ layout: private.njk
     const functions = getFunctions(app)
     const getLeaderboards = httpsCallable(functions, "getLeaderboards")
     const triggerPropogateEdit = httpsCallable(functions, "propogateEdit")
+    const exportGameData = httpsCallable(functions, "exportGameData")
+    const importGameData = httpsCallable(functions, "importGameData")
+    const wipeGameData = httpsCallable(functions, "wipeGameData")
 
     // Set up DOM elements
     const userIdInput = document.getElementById("modify-user-id")
@@ -99,7 +102,7 @@ layout: private.njk
                     <div class="font-semibold">
                         ${
                           user.fullName
-                        } - <span class="font-normal text-sm">ID: ${
+                        } <span class="font-normal text-sm">ID: ${
             user.scoutingId
           }</span>
                     </div>
@@ -125,7 +128,7 @@ layout: private.njk
                     <div class="font-semibold">
                         ${
                           user.fullName
-                        } - <span class="font-normal text-sm">ID: ${
+                        } <span class="font-normal text-sm">ID: ${
             user.scoutingId
           }</span>
                     </div>
@@ -498,6 +501,15 @@ layout: private.njk
       document
         .getElementById("delete-user-btn")
         .addEventListener("click", () => deleteUser())
+      document
+        .getElementById("database-export")
+        .addEventListener("click", () => handleExportGame())
+      document
+        .getElementById("database-import")
+        .addEventListener("click", () => handleImportGame())
+      document
+        .getElementById("database-wipe")
+        .addEventListener("click", () => handleWipeGame())
 
       byPointsButton.addEventListener("click", () =>
         switchLeaderboard("points")
@@ -509,6 +521,114 @@ layout: private.njk
           searchUsers("fullNameLower")
         }
       })
+    }
+
+    /**
+     * Exports the entire game database as a JSON file
+     */
+    async function handleExportGame() {
+      try {
+        showToast("Exporting game data, please wait...")
+        const result = await exportGameData()
+        const data = result.data
+
+        // Create a downloadable JSON file
+        const blob = new Blob([JSON.stringify(data, null, 2)], {
+          type: "application/json",
+        })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `game-export-${
+          new Date().toISOString().split("T")[0]
+        }.json`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+
+        showToast("Game exported successfully!")
+      } catch (error) {
+        console.error("Export failed:", error)
+        showToast("Error exporting game data.")
+      }
+    }
+
+/**
+     * Prompts the user for a JSON file and imports it to the database
+     */
+    function handleImportGame() {
+      const fileInput = document.createElement("input")
+      fileInput.type = "file"
+      fileInput.accept = "application/json"
+      fileInput.style.display = "none"
+      document.body.appendChild(fileInput)
+
+      fileInput.onchange = async (event) => {
+        const file = event.target.files[0]
+        if (!file) {
+           document.body.removeChild(fileInput)
+           return
+        }
+
+        const reader = new FileReader()
+        reader.onload = async (e) => {
+          try {
+            const parsedData = JSON.parse(e.target.result)
+
+            const isConfirmed = window.confirm(
+              "Are you sure you want to import this data? This will overwrite existing users."
+            )
+            if (!isConfirmed) {
+              document.body.removeChild(fileInput)
+              return
+            }
+
+            showToast("Importing data...")
+            
+            // SIMPLIFIED: Pass the parsed data directly without wrapping it again
+            await importGameData(parsedData)
+            
+            showToast("Game imported successfully!")
+            resetAndReload()
+          } catch (error) {
+            console.error("Import failed:", error)
+            // SHOW THE EXACT ERROR MESSAGE
+            showToast("Import failed: " + (error.message || "Check console"))
+          } finally {
+             document.body.removeChild(fileInput) 
+          }
+        }
+        reader.readAsText(file)
+      }
+
+      fileInput.click()
+    }
+
+    /**
+     * Wipes the entire game database
+     */
+    async function handleWipeGame() {
+      const isConfirmed = window.confirm(
+        "WARNING: Are you ABSOLUTELY sure you want to wipe the entire database? This cannot be undone."
+      )
+      if (!isConfirmed) return
+
+      // Double confirmation to prevent accidental clicks
+      const isDoubleConfirmed = window.confirm(
+        "Final warning: All user data will be permanently deleted."
+      )
+      if (!isDoubleConfirmed) return
+
+      try {
+        showToast("Wiping database...")
+        await wipeGameData()
+        showToast("Database wiped successfully!")
+        resetAndReload()
+      } catch (error) {
+        console.error("Wipe failed:", error)
+        showToast("Error wiping database.")
+      }
     }
 
     // ACTUALLY RUN
