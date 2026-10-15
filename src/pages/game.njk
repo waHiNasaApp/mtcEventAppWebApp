@@ -142,8 +142,11 @@ layout: base.njk
         })
       } catch (error) {
         console.error("Failed to load leaderboards:", error)
-        byPointsContainer.innerHTML = "<p>Error loading leaderboard.</p>"
-        byUsersContainer.innerHTML = "<p>Error loading leaderboard.</p>"
+        byPointsContainer.innerHTML = "<p>Error loading leaderboard</p>"
+        byUsersContainer.innerHTML = "<p>Error loading leaderboard</p>"
+        showToast(
+          "Error loading leaderboard. Are you logged in with an authorized account?"
+        )
       }
     }
 

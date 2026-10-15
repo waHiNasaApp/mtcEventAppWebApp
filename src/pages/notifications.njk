@@ -180,7 +180,7 @@ layout: base.njk
         })
       } catch (error) {
         console.error("Error refreshing tables: ", error)
-        showToast("Error refreshing tables.")
+        showToast("Error refreshing tables. Are you logged in with an authorized account?")
       }
     }
 
