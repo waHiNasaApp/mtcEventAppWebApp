@@ -131,18 +131,6 @@
 }
 
 /* ============================================================
-   PRIVATE.NJK
-   ============================================================ */
-.loading-wrapper {
-  @apply flex items-center justify-center md:justify-start gap-3 py-10 text-scouting-grey;
-}
-
-.loading-spinner {
-  /* w-5 h-5 creates a 20x20px circle. The border colors create the spinner effect. */
-  @apply w-5 h-5 border-2 border-scouting-tan border-t-scouting-blue rounded-full animate-spin;
-}
-
-/* ============================================================
    LOGIN.NJK CLASSES
    ============================================================ */
 .google-login-button {
@@ -177,4 +165,11 @@
 
 .leaderboard-rank {
   @apply flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 text-scouting-blue font-bold text-sm;
+}
+
+/* ============================================================
+   NOTIFICATIONS.NJK CLASSES
+   ============================================================ */
+.refresh-btn {
+  @apply text-gray-500 hover:text-gray-700 transition-colors cursor-pointer;
 }

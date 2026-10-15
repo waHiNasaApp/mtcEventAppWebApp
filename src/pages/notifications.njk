@@ -54,6 +54,21 @@ layout: base.njk
       }, 3000)
     }
 
+    // Helper to format ISO strings into local date and time consistently
+    function getLocalDisplay(isoString) {
+      if (!isoString) return { date: "N/A", time: "N/A" }
+      const dateObj = new Date(isoString)
+      const day = String(dateObj.getDate()).padStart(2, "0")
+      const month = String(dateObj.getMonth() + 1).padStart(2, "0")
+      const year = dateObj.getFullYear()
+      const hours = String(dateObj.getHours()).padStart(2, "0")
+      const minutes = String(dateObj.getMinutes()).padStart(2, "0")
+      return {
+        date: `${month}/${day}/${year}`,
+        time: `${hours}:${minutes}`,
+      }
+    }
+
     // Master Refresh Function
     async function refresh() {
       try {
@@ -79,19 +94,15 @@ layout: base.njk
 
         scheduledTbody.innerHTML = ""
         pendingNotifications.forEach((data) => {
-          const dateObj = new Date(data.sendAt)
-          const day = String(dateObj.getDate()).padStart(2, "0")
-          const month = String(dateObj.getMonth() + 1).padStart(2, "0")
-          const year = dateObj.getFullYear()
-          const formattedDate = `${day}/${month}/${year}`
+          const local = getLocalDisplay(data.sendAt)
 
           scheduledTbody.innerHTML += `
           <tr class="border-b border-scouting-light-tan">
             <td class="py-2 pr-2 font-bold">${data.title}</td>
             <td class="py-2 pr-2 truncate max-w-xs">${data.text}</td>
             <td class="py-2 pr-2 font-bold text-scouting-blue text-xs">${data.topic}</td>
-            <td class="py-2 pr-2">${formattedDate}</td>
-            <td class="py-2 pr-2">${data.time}</td>
+            <td class="py-2 pr-2">${local.date}</td>
+            <td class="py-2 pr-2">${local.time}</td>
           </tr>
         `
         })
@@ -115,6 +126,8 @@ layout: base.njk
 
         sentTbody.innerHTML = ""
         sentNotifications.forEach((data) => {
+          const local = getLocalDisplay(data.sendAt)
+
           sentTbody.innerHTML += `
           <tr class="border-b border-scouting-light-tan">
             <td class="py-2 pr-2 font-bold">${data.title}</td>
@@ -122,8 +135,8 @@ layout: base.njk
             <td class="py-2 pr-2 font-bold text-scouting-blue text-xs">${
               data.topic
             }</td>
-            <td class="py-2 pr-2">${data.date}</td>
-            <td class="py-2 pr-2">${data.time}</td>
+            <td class="py-2 pr-2">${local.date}</td>
+            <td class="py-2 pr-2">${local.time}</td>
             <td class="py-2 pr-2 text-center">${data.openedCount || 0}</td>
           </tr>
         `
@@ -148,6 +161,8 @@ layout: base.njk
 
         failedTbody.innerHTML = ""
         failedNotifications.forEach((data) => {
+          const local = getLocalDisplay(data.sendAt)
+
           failedTbody.innerHTML += `
           <tr class="border-b border-scouting-light-tan bg-red-50">
             <td class="py-2 pr-2 font-bold">${data.title}</td>
@@ -155,8 +170,8 @@ layout: base.njk
             <td class="py-2 pr-2 font-bold text-scouting-blue text-xs">${
               data.topic
             }</td>
-            <td class="py-2 pr-2">${data.date}</td>
-            <td class="py-2 pr-2">${data.time}</td>
+            <td class="py-2 pr-2">${local.date}</td>
+            <td class="py-2 pr-2">${local.time}</td>
             <td class="py-2 pr-2 text-red-600 text-xs">${
               data.error || "Unknown Error"
             }</td>
@@ -170,7 +185,7 @@ layout: base.njk
     }
 
     // Attach master refresh event to all refresh icons
-    document.querySelectorAll('.refresh-btn').forEach(btn => {
+    document.querySelectorAll(".refresh-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         refresh()
         showToast("Refreshing Database...")
@@ -205,14 +220,13 @@ layout: base.njk
 
       const isScheduled = scheduleCheck.checked
 
-      const cstFormatterDate = new Intl.DateTimeFormat("en-US", {
-        timeZone: "America/Chicago",
+      // Setup formatters for the local machine (removed timeZone: "America/Chicago")
+      const localFormatterDate = new Intl.DateTimeFormat("en-US", {
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
       })
-      const cstFormatterTime = new Intl.DateTimeFormat("en-US", {
-        timeZone: "America/Chicago",
+      const localFormatterTime = new Intl.DateTimeFormat("en-US", {
         hour: "2-digit",
         minute: "2-digit",
         hour12: false,
@@ -236,6 +250,7 @@ layout: base.njk
         if (isScheduled) {
           const d = document.getElementById("notif-date").value
           const t = document.getElementById("notif-time").value
+          // new Date(`YYYY-MM-DDTHH:MM`) inherently treats input as local time
           sendAtISO = new Date(`${d}T${t}`).toISOString()
         } else {
           sendAtISO = new Date().toISOString()
@@ -249,10 +264,10 @@ layout: base.njk
           sendAt: sendAtISO,
           date: isScheduled
             ? document.getElementById("notif-date").value
-            : cstFormatterDate.format(new Date()),
+            : localFormatterDate.format(new Date()),
           time: isScheduled
             ? document.getElementById("notif-time").value
-            : cstFormatterTime.format(new Date()),
+            : localFormatterTime.format(new Date()),
           openedCount: 0,
           status: "pending",
           createdAt: new Date().toISOString(),
@@ -289,7 +304,7 @@ layout: base.njk
 </script>
 
 <div>
-  <!-- Item -->
+  <!-- Send a Notification -->
   <div class="card-padded">
     <h2 class="item-title">Send a Notification</h2>
     <form id="notification-form" class="card-contents">
@@ -335,8 +350,9 @@ layout: base.njk
         id="schedule-container"
         class="hidden flex-col gap-3 p-4 bg-scouting-light-tan rounded-md"
       >
+        <!-- Updated Label -->
         <p class="text-sm font-bold text-scouting-dark-grey mb-1">
-          Set Target (CST)
+          Set Target (Local Time)
         </p>
         <input type="date" id="notif-date" class="input-text" />
         <input type="time" id="notif-time" class="input-text" />
@@ -348,29 +364,15 @@ layout: base.njk
     </form>
   </div>
 
-  <!-- Item -->
+  <!-- Scheduled Notifications -->
   <div class="card-padded">
     <div class="flex items-center justify-between mb-4">
       <h2 class="item-title m-0">Scheduled Notifications</h2>
       <button
-        id="refresh-scheduled-btn"
-        class="refresh-btn text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+        class="refresh-btn"
         title="Refresh Database"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke-width="2"
-          stroke="currentColor"
-          class="w-5 h-5"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
-          />
-        </svg>
+        <i class="fas fa-sync-alt"></i>
       </button>
     </div>
     <div class="card-contents overflow-x-auto">
@@ -393,29 +395,15 @@ layout: base.njk
     </div>
   </div>
 
-  <!-- Item -->
+  <!-- Prior Notifications -->
   <div class="card-padded">
     <div class="flex items-center justify-between mb-4">
       <h2 class="item-title m-0">Prior Notifications</h2>
       <button
-        id="refresh-sent-btn"
-        class="refresh-btn text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+        class="refresh-btn"
         title="Refresh Database"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke-width="2"
-          stroke="currentColor"
-          class="w-5 h-5"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
-          />
-        </svg>
+        <i class="fas fa-sync-alt"></i>
       </button>
     </div>
     <div class="card-contents overflow-x-auto">
@@ -439,29 +427,15 @@ layout: base.njk
     </div>
   </div>
 
-  <!-- Item -->
+  <!-- Failed Notifications -->
   <div class="card-padded">
     <div class="flex items-center justify-between mb-4">
       <h2 class="item-title m-0 text-red-600">Failed Notifications</h2>
       <button
-        id="refresh-failed-btn"
-        class="refresh-btn text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+        class="refresh-btn"
         title="Refresh Database"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke-width="2"
-          stroke="currentColor"
-          class="w-5 h-5"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
-          />
-        </svg>
+        <i class="fas fa-sync-alt"></i>
       </button>
     </div>
     <div class="card-contents overflow-x-auto">
@@ -475,7 +449,7 @@ layout: base.njk
             <th class="py-2">Topic</th>
             <th class="py-2">Send Date</th>
             <th class="py-2">Send Time</th>
-            <th class="py-2 text-red-600">Error</th>
+            <th class="py-2">Error</th>
           </tr>
         </thead>
         <tbody id="failed-table-body">
