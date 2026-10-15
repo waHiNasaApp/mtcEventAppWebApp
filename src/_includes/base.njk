@@ -38,7 +38,7 @@
       onAuthStateChanged(auth, (user) => {
         if (user) {
           // If the user is on the login page, redirect them to the directory
-          if (window.location.pathname == "/") {
+          if (window.location.pathname === "/") {
             window.location.href = "/directory/"
           }
 
@@ -53,6 +53,11 @@
           if (logoutBtn) {
             logoutBtn.classList.add("hidden")
             logoutBtn.style.display = "none"
+          }
+
+          // Redirect to login if not already there
+          if (window.location.pathname !== "/") {
+            window.location.href = "/"
           }
         }
       })
