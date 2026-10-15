@@ -72,7 +72,7 @@ layout: base.njk
     // Master Refresh Function
     async function refresh() {
       try {
-        // 1. Fetch and render Scheduled Items (status == "pending")
+        // Fetch and render Scheduled Items (status == "pending")
         const qScheduled = query(
           collection(db, "notifications"),
           where("status", "==", "pending")
@@ -107,7 +107,7 @@ layout: base.njk
         `
         })
 
-        // 2. Fetch and render Sent Items (status == "sent")
+        // Fetch and render Sent Items (status == "sent")
         const qSent = query(
           collection(db, "notifications"),
           where("status", "==", "sent")
@@ -142,7 +142,7 @@ layout: base.njk
         `
         })
 
-        // 3. Fetch and render Failed Items (status == "failed")
+        // Fetch and render Failed Items (status == "failed")
         const qFailed = query(
           collection(db, "notifications"),
           where("status", "==", "failed")

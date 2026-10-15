@@ -393,14 +393,7 @@ exports.dispatchNotifications = onSchedule('every 1 minutes', async (event) => {
         `[PROCESSING] docId: ${docId} | sendAt: ${data.sendAt} | topic: ${data.topic}`,
       );
 
-      // Warning if topic is missing (FCM will reject the payload if topic is undefined/empty)
-      if (!data.topic) {
-        console.warn(
-          `[WARNING] docId: ${docId} is missing a topic! Defaulting to 'all_users' or it may fail.`,
-        );
-      }
-
-      // 1. Construct the FCM Payload
+      // Construct the FCM Payload
       const message = {
         notification: {
           title: data.title || 'No Title',
@@ -434,7 +427,7 @@ exports.dispatchNotifications = onSchedule('every 1 minutes', async (event) => {
         JSON.stringify(message),
       );
 
-      // 2. Send the notification
+      // Send the notification
       const sendPromise = messaging
         .send(message)
         .then((response) => {
