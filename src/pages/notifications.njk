@@ -1,45 +1,389 @@
 ---
 title: Notifications
-layout: private.njk
+layout: base.njk
 ---
 
-<div class="columns-grid">
+<script type="module">
+  import {
+    getFirestore,
+    collection,
+    addDoc,
+    query,
+    where,
+    getDocs,
+  } from "firebase/firestore"
+  import {
+    getStorage,
+    ref,
+    uploadBytes,
+    getDownloadURL,
+  } from "firebase/storage"
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const db = getFirestore()
+    const storage = getStorage()
+
+    const scheduleCheck = document.getElementById("notif-schedule-check")
+    const scheduleContainer = document.getElementById("schedule-container")
+    const submitBtn = document.getElementById("notif-submit-btn")
+    const form = document.getElementById("notification-form")
+    const scheduledTbody = document.getElementById("scheduled-table-body")
+    const sentTbody = document.getElementById("sent-table-body")
+    const failedTbody = document.getElementById("failed-table-body")
+
+    // Toast Functionality
+    function showToast(message) {
+      const container = document.getElementById("toast-container")
+      if (!container) return
+
+      const toast = document.createElement("div")
+      toast.className = "toast-message opacity-0"
+      toast.innerText = message
+
+      container.appendChild(toast)
+
+      setTimeout(() => {
+        toast.classList.remove("opacity-0")
+        toast.classList.add("opacity-100")
+      }, 10)
+
+      setTimeout(() => {
+        toast.classList.remove("opacity-100")
+        toast.classList.add("opacity-0")
+        setTimeout(() => toast.remove(), 300)
+      }, 3000)
+    }
+
+    // Master Refresh Function
+    async function refresh() {
+      try {
+        // 1. Fetch and render Scheduled Items (status == "pending")
+        const qScheduled = query(
+          collection(db, "notifications"),
+          where("status", "==", "pending")
+        )
+        const scheduledSnap = await getDocs(qScheduled)
+
+        let pendingNotifications = []
+        scheduledSnap.forEach((doc) => {
+          const data = doc.data()
+          if (data.sendAt > new Date().toISOString()) {
+            pendingNotifications.push(data)
+          }
+        })
+
+        // Sort chronologically
+        pendingNotifications.sort(
+          (a, b) => new Date(a.sendAt) - new Date(b.sendAt)
+        )
+
+        scheduledTbody.innerHTML = ""
+        pendingNotifications.forEach((data) => {
+          const dateObj = new Date(data.sendAt)
+          const day = String(dateObj.getDate()).padStart(2, "0")
+          const month = String(dateObj.getMonth() + 1).padStart(2, "0")
+          const year = dateObj.getFullYear()
+          const formattedDate = `${day}/${month}/${year}`
+
+          scheduledTbody.innerHTML += `
+          <tr class="border-b border-scouting-light-tan">
+            <td class="py-2 pr-2 font-bold">${data.title}</td>
+            <td class="py-2 pr-2 truncate max-w-xs">${data.text}</td>
+            <td class="py-2 pr-2 font-bold text-scouting-blue text-xs">${data.topic}</td>
+            <td class="py-2 pr-2">${formattedDate}</td>
+            <td class="py-2 pr-2">${data.time}</td>
+          </tr>
+        `
+        })
+
+        // 2. Fetch and render Sent Items (status == "sent")
+        const qSent = query(
+          collection(db, "notifications"),
+          where("status", "==", "sent")
+        )
+        const sentSnap = await getDocs(qSent)
+
+        let sentNotifications = []
+        sentSnap.forEach((doc) => {
+          sentNotifications.push(doc.data())
+        })
+
+        // Sort sent notifications descending by send date
+        sentNotifications.sort(
+          (a, b) => new Date(b.sendAt) - new Date(a.sendAt)
+        )
+
+        sentTbody.innerHTML = ""
+        sentNotifications.forEach((data) => {
+          sentTbody.innerHTML += `
+          <tr class="border-b border-scouting-light-tan">
+            <td class="py-2 pr-2 font-bold">${data.title}</td>
+            <td class="py-2 pr-2 truncate max-w-xs">${data.text}</td>
+            <td class="py-2 pr-2 font-bold text-scouting-blue text-xs">${
+              data.topic
+            }</td>
+            <td class="py-2 pr-2">${data.date}</td>
+            <td class="py-2 pr-2">${data.time}</td>
+            <td class="py-2 pr-2 text-center">${data.openedCount || 0}</td>
+          </tr>
+        `
+        })
+
+        // 3. Fetch and render Failed Items (status == "failed")
+        const qFailed = query(
+          collection(db, "notifications"),
+          where("status", "==", "failed")
+        )
+        const failedSnap = await getDocs(qFailed)
+
+        let failedNotifications = []
+        failedSnap.forEach((doc) => {
+          failedNotifications.push(doc.data())
+        })
+
+        // Sort failed notifications descending by send date
+        failedNotifications.sort(
+          (a, b) => new Date(b.sendAt) - new Date(a.sendAt)
+        )
+
+        failedTbody.innerHTML = ""
+        failedNotifications.forEach((data) => {
+          failedTbody.innerHTML += `
+          <tr class="border-b border-scouting-light-tan bg-red-50">
+            <td class="py-2 pr-2 font-bold">${data.title}</td>
+            <td class="py-2 pr-2 truncate max-w-xs">${data.text}</td>
+            <td class="py-2 pr-2 font-bold text-scouting-blue text-xs">${
+              data.topic
+            }</td>
+            <td class="py-2 pr-2">${data.date}</td>
+            <td class="py-2 pr-2">${data.time}</td>
+            <td class="py-2 pr-2 text-red-600 text-xs">${
+              data.error || "Unknown Error"
+            }</td>
+          </tr>
+        `
+        })
+      } catch (error) {
+        console.error("Error refreshing tables: ", error)
+        showToast("Error refreshing tables.")
+      }
+    }
+
+    // Attach master refresh event to all refresh icons
+    document.querySelectorAll('.refresh-btn').forEach(btn => {
+      btn.addEventListener("click", () => {
+        refresh()
+        showToast("Refreshing Database...")
+      })
+    })
+
+    // Initial load
+    refresh()
+
+    // Toggle schedule visibility and requirement constraints
+    scheduleCheck.addEventListener("change", (e) => {
+      if (e.target.checked) {
+        scheduleContainer.classList.remove("hidden")
+        scheduleContainer.classList.add("flex")
+        submitBtn.textContent = "Schedule Notification"
+        document.getElementById("notif-date").setAttribute("required", "true")
+        document.getElementById("notif-time").setAttribute("required", "true")
+      } else {
+        scheduleContainer.classList.remove("flex")
+        scheduleContainer.classList.add("hidden")
+        submitBtn.textContent = "Send Notification"
+        document.getElementById("notif-date").removeAttribute("required")
+        document.getElementById("notif-time").removeAttribute("required")
+      }
+    })
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault()
+
+      submitBtn.disabled = true
+      submitBtn.textContent = "Processing..."
+
+      const isScheduled = scheduleCheck.checked
+
+      const cstFormatterDate = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Chicago",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      })
+      const cstFormatterTime = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Chicago",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      })
+
+      try {
+        const imageInput = document.getElementById("notif-image")
+        let imageUrl = null
+
+        if (imageInput.files && imageInput.files[0]) {
+          const file = imageInput.files[0]
+          const storageRef = ref(
+            storage,
+            `notification_images/${Date.now()}_${file.name}`
+          )
+          const snapshot = await uploadBytes(storageRef, file)
+          imageUrl = await getDownloadURL(snapshot.ref)
+        }
+
+        let sendAtISO
+        if (isScheduled) {
+          const d = document.getElementById("notif-date").value
+          const t = document.getElementById("notif-time").value
+          sendAtISO = new Date(`${d}T${t}`).toISOString()
+        } else {
+          sendAtISO = new Date().toISOString()
+        }
+
+        const notificationData = {
+          title: document.getElementById("notif-title").value,
+          text: document.getElementById("notif-text").value,
+          imageUrl: imageUrl,
+          topic: document.getElementById("notif-topic").value,
+          sendAt: sendAtISO,
+          date: isScheduled
+            ? document.getElementById("notif-date").value
+            : cstFormatterDate.format(new Date()),
+          time: isScheduled
+            ? document.getElementById("notif-time").value
+            : cstFormatterTime.format(new Date()),
+          openedCount: 0,
+          status: "pending",
+          createdAt: new Date().toISOString(),
+        }
+
+        await addDoc(collection(db, "notifications"), notificationData)
+
+        form.reset()
+        scheduleContainer.classList.remove("flex")
+        scheduleContainer.classList.add("hidden")
+        submitBtn.textContent = "Send Notification"
+
+        showToast(
+          isScheduled
+            ? "Notification scheduled successfully!"
+            : "Notification sent successfully!"
+        )
+
+        // Auto-refresh the tables immediately after saving
+        await refresh()
+      } catch (error) {
+        console.error("Error managing notification: ", error)
+        showToast("Error processing notification.")
+      } finally {
+        submitBtn.disabled = false
+        if (scheduleContainer.classList.contains("hidden")) {
+          submitBtn.textContent = "Send Notification"
+        } else {
+          submitBtn.textContent = "Schedule Notification"
+        }
+      }
+    })
+  })
+</script>
+
+<div>
   <!-- Item -->
   <div class="card-padded">
     <h2 class="item-title">Send a Notification</h2>
     <form id="notification-form" class="card-contents">
-      <input type="text" id="notif-title" class="input-text" placeholder="Notification Title" required>
-      <textarea id="notif-text" class="input-text" placeholder="Notification Text" rows="3" required></textarea>
-      
-      <label class="text-sm font-bold text-scouting-dark-grey mt-2 mb-1">Image Upload (Optional)</label>
-      <input type="file" id="notif-image" accept="image/*" class="block w-full text-sm text-scouting-dark-grey border border-scouting-pale-grey rounded-md cursor-pointer bg-white focus:outline-none focus:ring-1 focus:ring-scouting-blue file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-bold file:bg-scouting-blue file:text-white hover:file:brightness-90 transition-all">
-      
-      <label class="flex items-center gap-2 font-bold text-scouting-dark-grey text-sm mt-2 cursor-pointer">
-        <input type="checkbox" id="notif-schedule-check">
+      <input
+        type="text"
+        id="notif-title"
+        class="input-text"
+        placeholder="Notification Title"
+        required
+      />
+      <textarea
+        id="notif-text"
+        class="input-text"
+        placeholder="Notification Text"
+        rows="3"
+        required
+      ></textarea>
+
+      <label class="text-sm font-bold text-scouting-dark-grey mt-2 mb-1"
+        >Target Audience (Topic)</label
+      >
+      <select id="notif-topic" class="input-text mb-2 bg-white" required>
+        <option value="2026-council-jamboree">2026-council-jamboree</option>
+      </select>
+      <label class="text-sm font-bold text-scouting-dark-grey mt-2 mb-1"
+        >Image Upload (Optional)</label
+      >
+      <input
+        type="file"
+        id="notif-image"
+        accept="image/*"
+        class="block w-full text-sm text-scouting-dark-grey border border-scouting-pale-grey rounded-md cursor-pointer bg-white focus:outline-none focus:ring-1 focus:ring-scouting-blue file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-bold file:bg-scouting-blue file:text-white hover:file:brightness-90 transition-all"
+      />
+
+      <label
+        class="flex items-center gap-2 font-bold text-scouting-dark-grey text-sm mt-2 cursor-pointer"
+      >
+        <input type="checkbox" id="notif-schedule-check" />
         Schedule Send
       </label>
 
-      <div id="schedule-container" class="hidden flex-col gap-3 p-4 bg-scouting-light-tan rounded-md">
-        <p class="text-sm font-bold text-scouting-dark-grey mb-1">Set Target (CST)</p>
-        <input type="date" id="notif-date" class="input-text">
-        <input type="time" id="notif-time" class="input-text">
+      <div
+        id="schedule-container"
+        class="hidden flex-col gap-3 p-4 bg-scouting-light-tan rounded-md"
+      >
+        <p class="text-sm font-bold text-scouting-dark-grey mb-1">
+          Set Target (CST)
+        </p>
+        <input type="date" id="notif-date" class="input-text" />
+        <input type="time" id="notif-time" class="input-text" />
       </div>
 
-      <button type="submit" id="notif-submit-btn" class="btn btn-primary mt-2">Send Notification</button>
+      <button type="submit" id="notif-submit-btn" class="btn btn-primary mt-2">
+        Send Notification
+      </button>
     </form>
   </div>
 
   <!-- Item -->
   <div class="card-padded">
-    <h2 class="item-title">Scheduled Notifications</h2>
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="item-title m-0">Scheduled Notifications</h2>
+      <button
+        id="refresh-scheduled-btn"
+        class="refresh-btn text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+        title="Refresh Database"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="2"
+          stroke="currentColor"
+          class="w-5 h-5"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
+          />
+        </svg>
+      </button>
+    </div>
     <div class="card-contents overflow-x-auto">
-      <table class="w-full text-left border-collapse text-sm text-scouting-dark-grey">
+      <table
+        class="w-full text-left border-collapse text-sm text-scouting-dark-grey"
+      >
         <thead>
           <tr class="border-b border-scouting-light-grey">
             <th class="py-2">Title</th>
+            <th class="py-2">Text</th>
+            <th class="py-2">Topic</th>
             <th class="py-2">Send Date</th>
             <th class="py-2">Send Time</th>
-            <th class="py-2">Text</th>
           </tr>
         </thead>
         <tbody id="scheduled-table-body">
@@ -51,16 +395,41 @@ layout: private.njk
 
   <!-- Item -->
   <div class="card-padded">
-    <h2 class="item-title">Prior Notifications</h2>
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="item-title m-0">Prior Notifications</h2>
+      <button
+        id="refresh-sent-btn"
+        class="refresh-btn text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+        title="Refresh Database"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="2"
+          stroke="currentColor"
+          class="w-5 h-5"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
+          />
+        </svg>
+      </button>
+    </div>
     <div class="card-contents overflow-x-auto">
-      <table class="w-full text-left border-collapse text-sm text-scouting-dark-grey">
+      <table
+        class="w-full text-left border-collapse text-sm text-scouting-dark-grey"
+      >
         <thead>
           <tr class="border-b border-scouting-light-grey">
             <th class="py-2">Title</th>
+            <th class="py-2">Text</th>
+            <th class="py-2">Topic</th>
             <th class="py-2">Send Date</th>
             <th class="py-2">Send Time</th>
             <th class="py-2">Number Opened</th>
-            <th class="py-2">Text</th>
           </tr>
         </thead>
         <tbody id="sent-table-body">
@@ -69,163 +438,55 @@ layout: private.njk
       </table>
     </div>
   </div>
+
+  <!-- Item -->
+  <div class="card-padded">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="item-title m-0 text-red-600">Failed Notifications</h2>
+      <button
+        id="refresh-failed-btn"
+        class="refresh-btn text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
+        title="Refresh Database"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="2"
+          stroke="currentColor"
+          class="w-5 h-5"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
+          />
+        </svg>
+      </button>
+    </div>
+    <div class="card-contents overflow-x-auto">
+      <table
+        class="w-full text-left border-collapse text-sm text-scouting-dark-grey"
+      >
+        <thead>
+          <tr class="border-b border-scouting-light-grey">
+            <th class="py-2">Title</th>
+            <th class="py-2">Text</th>
+            <th class="py-2">Topic</th>
+            <th class="py-2">Send Date</th>
+            <th class="py-2">Send Time</th>
+            <th class="py-2 text-red-600">Error</th>
+          </tr>
+        </thead>
+        <tbody id="failed-table-body">
+          <!-- Populated by JS -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Toast Notifications Container -->
+  <div id="toast-container" class="toast-container">
+    <!-- Toasts will be injected here by JS -->
+  </div>
 </div>
-
-<!-- Toast Notifications Container -->
-<div id="toast-container" class="toast-container">
-  <!-- Toasts will be injected here by JS -->
-</div>
-
-<script type="module">
-  import { getFirestore, collection, addDoc, query, where, onSnapshot } from "firebase/firestore";
-  import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-
-  const db = getFirestore();
-  const storage = getStorage();
-
-  const scheduleCheck = document.getElementById('notif-schedule-check');
-  const scheduleContainer = document.getElementById('schedule-container');
-  const submitBtn = document.getElementById('notif-submit-btn');
-  const form = document.getElementById('notification-form');
-
-  // Toast Functionality
-  function showToast(message) {
-    const container = document.getElementById("toast-container");
-    if (!container) return;
-
-    const toast = document.createElement("div");
-    toast.className = "toast-message opacity-0";
-    toast.innerText = message;
-
-    container.appendChild(toast);
-
-    setTimeout(() => {
-      toast.classList.remove("opacity-0");
-      toast.classList.add("opacity-100");
-    }, 10);
-
-    setTimeout(() => {
-      toast.classList.remove("opacity-100");
-      toast.classList.add("opacity-0");
-      setTimeout(() => toast.remove(), 300);
-    }, 3000);
-  }
-
-  // Toggle schedule visibility and requirement constraints
-  scheduleCheck.addEventListener('change', (e) => {
-    if (e.target.checked) {
-      scheduleContainer.classList.remove('hidden');
-      scheduleContainer.classList.add('flex');
-      submitBtn.textContent = 'Schedule Notification';
-      document.getElementById('notif-date').setAttribute('required', 'true');
-      document.getElementById('notif-time').setAttribute('required', 'true');
-    } else {
-      scheduleContainer.classList.remove('flex');
-      scheduleContainer.classList.add('hidden');
-      submitBtn.textContent = 'Send Notification';
-      document.getElementById('notif-date').removeAttribute('required');
-      document.getElementById('notif-time').removeAttribute('required');
-    }
-  });
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    // Prevent multiple submissions
-    submitBtn.disabled = true;
-    const originalBtnText = submitBtn.textContent;
-    submitBtn.textContent = 'Processing...';
-
-    const isScheduled = scheduleCheck.checked;
-    
-    const cstFormatterDate = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' });
-    const cstFormatterTime = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hour: '2-digit', minute: '2-digit', hour12: false });
-    
-    try {
-      // Handle Image Upload First
-      const imageInput = document.getElementById('notif-image');
-      let imageUrl = null;
-      
-      if (imageInput.files && imageInput.files[0]) {
-        const file = imageInput.files[0];
-        const storageRef = ref(storage, `notification_images/${Date.now()}_${file.name}`);
-        const snapshot = await uploadBytes(storageRef, file);
-        imageUrl = await getDownloadURL(snapshot.ref);
-      }
-      
-      // Compile Notification Data
-      const notificationData = {
-        title: document.getElementById('notif-title').value,
-        text: document.getElementById('notif-text').value,
-        imageUrl: imageUrl,
-        platforms: ['ios', 'android'],
-        status: isScheduled ? 'scheduled' : 'sent',
-        date: isScheduled ? document.getElementById('notif-date').value : cstFormatterDate.format(new Date()),
-        time: isScheduled ? document.getElementById('notif-time').value : cstFormatterTime.format(new Date()),
-        openedCount: 0,
-        createdAt: new Date().toISOString()
-      };
-
-      // Save to Firestore
-      await addDoc(collection(db, "notifications"), notificationData);
-      
-      // Reset UI
-      form.reset();
-      scheduleContainer.classList.remove('flex');
-      scheduleContainer.classList.add('hidden');
-      submitBtn.textContent = 'Send Notification';
-      
-      // Fire Toast Success
-      showToast(isScheduled ? "Notification scheduled successfully!" : "Notification sent successfully!");
-      
-    } catch (error) {
-      console.error("Error managing notification: ", error);
-      showToast("Error processing notification.");
-    } finally {
-      // Re-enable button
-      submitBtn.disabled = false;
-      if (scheduleContainer.classList.contains('hidden')) {
-          submitBtn.textContent = 'Send Notification';
-      } else {
-          submitBtn.textContent = 'Schedule Notification';
-      }
-    }
-  });
-
-  // Table Subscriptions
-  const scheduledTbody = document.getElementById('scheduled-table-body');
-  const sentTbody = document.getElementById('sent-table-body');
-
-  const qScheduled = query(collection(db, "notifications"), where("status", "==", "scheduled"));
-  onSnapshot(qScheduled, (snapshot) => {
-    scheduledTbody.innerHTML = '';
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      scheduledTbody.innerHTML += `
-        <tr class="border-b border-scouting-light-tan">
-          <td class="py-2 pr-2 font-bold">${data.title}</td>
-          <td class="py-2 pr-2">${data.date}</td>
-          <td class="py-2 pr-2">${data.time}</td>
-          <td class="py-2 truncate max-w-xs">${data.text}</td>
-        </tr>
-      `;
-    });
-  });
-
-  const qSent = query(collection(db, "notifications"), where("status", "==", "sent"));
-  onSnapshot(qSent, (snapshot) => {
-    sentTbody.innerHTML = '';
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      sentTbody.innerHTML += `
-        <tr class="border-b border-scouting-light-tan">
-          <td class="py-2 pr-2 font-bold">${data.title}</td>
-          <td class="py-2 pr-2">${data.date}</td>
-          <td class="py-2 pr-2">${data.time}</td>
-          <td class="py-2 pr-2 text-center">${data.openedCount || 0}</td>
-          <td class="py-2 truncate max-w-xs">${data.text}</td>
-        </tr>
-      `;
-    });
-  });
-</script>

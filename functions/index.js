@@ -5,7 +5,7 @@ setGlobalOptions({
 });
 
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
-
+const { onSchedule } = require('firebase-functions/v2/scheduler');
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 admin.initializeApp();
@@ -259,52 +259,56 @@ exports.exportGameData = functions.https.onCall(async (data, context) => {
  * Receives a JSON object and safely batch-writes it to the database.
  */
 exports.importGameData = functions.https.onCall(async (data, context) => {
-    // 1. Handle differences between Firebase v1/v2 and extra data wrappers
-    const payload = data.data || data;
+  // 1. Handle differences between Firebase v1/v2 and extra data wrappers
+  const payload = data.data || data;
 
-    // 2. Hunt for the 'users' object regardless of how the JSON is wrapped
-    let users = null;
-    if (payload.users) {
-        users = payload.users;
-    } else if (payload.gameData && payload.gameData.users) {
-        users = payload.gameData.users;
-    } else if (payload.data && payload.data.users) {
-        users = payload.data.users;
+  // 2. Hunt for the 'users' object regardless of how the JSON is wrapped
+  let users = null;
+  if (payload.users) {
+    users = payload.users;
+  } else if (payload.gameData && payload.gameData.users) {
+    users = payload.gameData.users;
+  } else if (payload.data && payload.data.users) {
+    users = payload.data.users;
+  }
+
+  // 3. Reject if we still can't find valid user data
+  if (!users || typeof users !== 'object') {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      "Invalid format: Could not locate the 'users' object in the file.",
+    );
+  }
+
+  const db = admin.firestore();
+  try {
+    let batch = db.batch();
+    let operationCount = 0;
+
+    for (const [docId, userData] of Object.entries(users)) {
+      const docRef = db.collection('users').doc(docId);
+      batch.set(docRef, userData);
+      operationCount++;
+
+      if (operationCount === 500) {
+        await batch.commit();
+        batch = db.batch();
+        operationCount = 0;
+      }
     }
 
-    // 3. Reject if we still can't find valid user data
-    if (!users || typeof users !== 'object') {
-        throw new functions.https.HttpsError(
-            "invalid-argument", 
-            "Invalid format: Could not locate the 'users' object in the file."
-        );
+    if (operationCount > 0) {
+      await batch.commit();
     }
 
-    const db = admin.firestore();
-    try {
-        let batch = db.batch();
-        let operationCount = 0;
-
-        for (const [docId, userData] of Object.entries(users)) {
-            const docRef = db.collection("users").doc(docId);
-            batch.set(docRef, userData);
-            operationCount++;
-
-            if (operationCount === 500) {
-                await batch.commit();
-                batch = db.batch();
-                operationCount = 0;
-            }
-        }
-
-        if (operationCount > 0) {
-            await batch.commit();
-        }
-
-        return { message: "Import successful" };
-    } catch (error) {
-        throw new functions.https.HttpsError("internal", "Failed to write data.", error);
-    }
+    return { message: 'Import successful' };
+  } catch (error) {
+    throw new functions.https.HttpsError(
+      'internal',
+      'Failed to write data.',
+      error,
+    );
+  }
 });
 
 /**
@@ -347,4 +351,133 @@ exports.wipeGameData = functions.https.onCall(async (data, context) => {
       error,
     );
   }
+});
+
+/**
+ * Runs every minute to check for scheduled/immediate notifications
+ */
+exports.dispatchNotifications = onSchedule('every 1 minutes', async (event) => {
+  const db = admin.firestore();
+  const messaging = admin.messaging();
+  const nowISO = new Date().toISOString();
+
+  console.log(`[START] dispatchNotifications triggered at: ${nowISO}`);
+
+  try {
+    // Find all notifications that are due to be sent and haven't been sent yet
+    const notificationsRef = db.collection('notifications');
+    const snapshot = await notificationsRef
+      .where('status', '==', 'pending')
+      .where('sendAt', '<=', nowISO)
+      .get();
+
+    if (snapshot.empty) {
+      console.log(
+        `[INFO] No pending notifications found with sendAt <= ${nowISO}. Exiting.`,
+      );
+      return null;
+    }
+
+    console.log(
+      `[INFO] Found ${snapshot.size} pending notifications to process.`,
+    );
+
+    const batch = db.batch();
+    const promises = [];
+
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      const docId = doc.id;
+
+      console.log(
+        `[PROCESSING] docId: ${docId} | sendAt: ${data.sendAt} | topic: ${data.topic}`,
+      );
+
+      // Warning if topic is missing (FCM will reject the payload if topic is undefined/empty)
+      if (!data.topic) {
+        console.warn(
+          `[WARNING] docId: ${docId} is missing a topic! Defaulting to 'all_users' or it may fail.`,
+        );
+      }
+
+      // 1. Construct the FCM Payload
+      const message = {
+        notification: {
+          title: data.title || 'No Title',
+          body: data.text || 'No Body',
+        },
+        topic: data.topic,
+
+        android: {
+          notification: {
+            sound: 'default',
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              sound: 'default',
+              badge: 1,
+            },
+          },
+        },
+      };
+
+      // Add image to payload if it exists
+      if (data.imageUrl) {
+        message.notification.imageUrl = data.imageUrl;
+        console.log(`[INFO] docId: ${docId} includes an image.`);
+      }
+
+      console.log(
+        `[PAYLOAD] docId: ${docId} | payload:`,
+        JSON.stringify(message),
+      );
+
+      // 2. Send the notification
+      const sendPromise = messaging
+        .send(message)
+        .then((response) => {
+          console.log(
+            `[SUCCESS] docId: ${docId} sent successfully. FCM Message ID: ${response}`,
+          );
+          // Mark as sent in Firestore
+          batch.update(doc.ref, {
+            status: 'sent',
+            actualSendTime: new Date().toISOString(),
+            fcmMessageId: response,
+          });
+        })
+        .catch((error) => {
+          console.error(
+            `[ERROR] docId: ${docId} failed to send. Error details:`,
+            error,
+          );
+          // Mark as failed so it doesn't keep retrying indefinitely
+          batch.update(doc.ref, {
+            status: 'failed',
+            error: error.message || 'Unknown error',
+            failedAt: new Date().toISOString(),
+          });
+        });
+
+      promises.push(sendPromise);
+    });
+
+    // Wait for all messages to send
+    console.log(
+      `[INFO] Waiting for ${promises.length} FCM send promises to resolve...`,
+    );
+    await Promise.all(promises);
+
+    // Commit the Firestore updates
+    console.log(`[INFO] Committing Firestore batch updates...`);
+    await batch.commit();
+    console.log(`[SUCCESS] Firestore batch commit successful.`);
+  } catch (globalError) {
+    console.error(`[CRITICAL ERROR] Function execution failed:`, globalError);
+  }
+
+  console.log(`[END] dispatchNotifications execution complete.`);
+  return null;
 });
