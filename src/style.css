@@ -100,8 +100,6 @@
 /* ============================================================
    BASE.NJK
    ============================================================ */
-
-/* Page Layout */
 .page-body {
   @apply bg-scouting-light-tan text-scouting-dark-grey font-sans antialiased min-h-screen flex flex-col;
 }
